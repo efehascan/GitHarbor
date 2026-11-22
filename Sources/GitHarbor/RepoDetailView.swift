@@ -36,6 +36,8 @@ struct RepoDetailView: View {
                 Text(abbreviated(repo.path))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                     .textSelection(.enabled)
             }
             Spacer()

@@ -35,3 +35,7 @@ Her depo ya tam bir klasörde ya da `ungrouped` içindedir. Depo adı verilmezse
 - `@@ -a[,b] +c[,d] @@[ bölüm]`: virgülsüz sayı 1 demektir. section = ikinci `@@`'den sonraki metin, baştaki tek boşluk atılmış.
 - Parça satırları (parça başladıktan sonra, yeni `diff --git` ya da `@@`'ye kadar): ilk karakter `' '` context, `'+'` added, `'-'` removed, `'\\'` noNewline; metin = ilk karakterden sonrası. Numara: context ikisini de alır ve ikisini artırır; removed eskiyi; added yeniyi; noNewline hiçbirini. Boş satır (karakter yok) context sayılır, metin "".
 - Parçanın içindeyken `---`/`+++` ile başlayan satır başlık DEĞİL, içerik satırıdır.
+
+## Geçmiş ve dallar (LogParser)
+- `parseLog`: metin 0x1e ile kayıtlara bölünür; her kayıt baştaki/sondaki boşluk ve satır sonlarından kırpılır, boşsa atlanır. 0x1f ile tam 7 alana bölünmeli (`omittingEmptySubsequences: false`), değilse atlanır. Ebeveynler boşlukla ayrılır (boşsa []). Zaman Int'e çevrilemezse kayıt atlanır. Referanslar ", " ile bölünür (boşsa []).
+- `parseBranches`: satır satır; boş satır atlanır; 0x1f ile tam 6 alan. `refs/heads/` öneki → yerel (ad öneksiz), `refs/remotes/` → uzak (ad öneksiz, ör. "origin/main"); başka ref (etiket) atlanır; uzak adı "/HEAD" ile bitiyorsa atlanır. upstream boşsa nil. Takip: "gone" → upstreamGone; değilse ", " ile bölünür, "ahead N" / "behind N". HEAD alanı "*" ise isHead. Zaman çevrilemezse satır atlanır. Sıra korunur.

@@ -6,14 +6,19 @@ struct RepoDetailView: View {
     let store: HarborStore
     let repo: RepoEntry
     @State private var session: ChangesSession
+    @State private var history: HistorySession
+    /// Görüntü modunda `--history` ile Geçmiş sekmesiyle açılır.
+    @State private var tab: Tab = CommandLine.arguments.contains("--history") ? .history : .changes
+
+    enum Tab: String, CaseIterable { case changes = "Değişiklikler", history = "Geçmiş" }
 
     init(store: HarborStore, repo: RepoEntry) {
         self.store = store
         self.repo = repo
         let id = repo.id
-        _session = State(initialValue: ChangesSession(repo: repo, onChange: { [weak store] in
-            Task { await store?.refreshOperation(id) }
-        }))
+        let changed: () -> Void = { [weak store] in Task { await store?.refreshOperation(id) } }
+        _session = State(initialValue: ChangesSession(repo: repo, onChange: changed))
+        _history = State(initialValue: HistorySession(repo: repo, onChange: changed))
     }
 
     private var status: RepoStatus? { store.statuses[repo.id] }
@@ -28,11 +33,16 @@ struct RepoDetailView: View {
             if let error {
                 message("exclamationmark.triangle", error)
             } else if status != nil {
-                HSplitView {
-                    ChangesPane(session: session)
-                        .frame(minWidth: 280, idealWidth: 330, maxWidth: 460)
-                    DiffPane(session: session)
-                        .frame(minWidth: 380, maxWidth: .infinity)
+                switch tab {
+                case .changes:
+                    HSplitView {
+                        ChangesPane(session: session)
+                            .frame(minWidth: 280, idealWidth: 330, maxWidth: 460)
+                        DiffPane(session: session)
+                            .frame(minWidth: 380, maxWidth: .infinity)
+                    }
+                case .history:
+                    HistoryView(session: history)
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -40,7 +50,11 @@ struct RepoDetailView: View {
         }
         .navigationTitle(repo.name)
         .navigationSubtitle(status?.branch ?? "")
-        .task(id: status) { if let status { session.update(status: status, operation: operation) } }
+        .task(id: status) {
+            if let status { session.update(status: status, operation: operation) }
+            if tab == .history { await history.reload() }
+        }
+        .task(id: tab) { if tab == .history { await history.reload() } }
         .task(id: operation) { if let status { session.update(status: status, operation: operation) } }
         .task {
             await session.loadStashes()
@@ -50,6 +64,11 @@ struct RepoDetailView: View {
             Button("Tamam", role: .cancel) {}
         } message: {
             Text(session.lastError ?? "")
+        }
+        .alert("İşlem yapılamadı", isPresented: Binding(get: { history.lastError != nil }, set: { if !$0 { history.lastError = nil } })) {
+            Button("Tamam", role: .cancel) {}
+        } message: {
+            Text(history.lastError ?? "")
         }
         .alert("Senkron yapılamadı", isPresented: Binding(get: { store.syncAlert != nil }, set: { if !$0 { store.syncAlert = nil } })) {
             Button("Tamam", role: .cancel) {}
@@ -70,9 +89,15 @@ struct RepoDetailView: View {
                     .textSelection(.enabled)
             }
             Spacer()
+            Picker("", selection: $tab) {
+                ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            Spacer()
             if let status {
-                Pill(icon: "arrow.triangle.branch", title: status.branch ?? "ayrık HEAD",
-                     detail: status.upstream ?? "yayınlanmamış dal")
+                BranchButton(session: history, status: status)
                 StashButton(session: session)
                 SyncButton(store: store, id: repo.id, status: status)
             }
@@ -125,8 +150,16 @@ private struct StashButton: View {
 
     var body: some View {
         Button { open.toggle() } label: {
-            Pill(icon: "tray.full", title: "\(session.stashes.count) saklı", detail: "stash")
+            HStack(spacing: 5) {
+                Image(systemName: "tray.full").font(.system(size: 14, weight: .medium)).foregroundStyle(.secondary)
+                if !session.stashes.isEmpty {
+                    Text("\(session.stashes.count)").font(.system(size: 12, weight: .semibold).monospacedDigit())
+                }
+            }
+            .padding(.horizontal, 11).padding(.vertical, 12)
+            .glassEffect(.regular, in: .rect(cornerRadius: 10))
         }
+        .help("Saklanan değişiklikler (stash)")
         .buttonStyle(.plain)
         .popover(isPresented: $open, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 12) {

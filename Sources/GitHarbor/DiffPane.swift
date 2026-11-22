@@ -80,7 +80,7 @@ struct DiffPane: View {
                     }
                     ForEach(Array(hunk.lines.enumerated()), id: \.offset) { i, line in
                         let ref = DiffLineRef(hunk: h, line: i)
-                        DiffLineRow(line: line, selected: session.lineSelection.contains(ref))
+                        DiffLineView(line: line, selected: session.lineSelection.contains(ref))
                             .onTapGesture {
                                 session.toggleLine(ref, extend: NSEvent.modifierFlags.contains(.shift))
                             }
@@ -126,7 +126,7 @@ private struct HunkHeader: View {
     }
 }
 
-private struct DiffLineRow: View {
+struct DiffLineView: View {
     let line: DiffLine
     let selected: Bool
 

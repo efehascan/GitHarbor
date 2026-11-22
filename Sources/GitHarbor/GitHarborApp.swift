@@ -16,6 +16,7 @@ struct GitHarborApp: App {
                 }
         }
         .windowToolbarStyle(.unified)
+        .defaultSize(width: 1320, height: 820)
 
         Settings {
             SettingsView(store: store)

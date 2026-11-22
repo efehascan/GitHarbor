@@ -170,6 +170,17 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Toggle("Düşük güç modunda duraklat", isOn: binding(\.pauseOnLowPower))
             }
+            Section("GitHub") {
+                if let user = store.github.user {
+                    LabeledContent("Hesap", value: user.login)
+                    Button("Çıkış yap", role: .destructive) { store.github.signOut() }
+                } else if store.github.isConnected {
+                    LabeledContent("Hesap", value: "bağlı (doğrulanıyor)")
+                    Button("Çıkış yap", role: .destructive) { store.github.signOut() }
+                } else {
+                    ConnectCard(account: store.github).frame(height: 300)
+                }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 460)

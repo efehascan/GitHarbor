@@ -171,7 +171,7 @@ private struct CommitDetail: View {
                     let body = session.message.components(separatedBy: "\n").dropFirst().joined(separator: "\n")
                         .trimmingCharacters(in: .whitespacesAndNewlines)
                     if !body.isEmpty {
-                        Text(body).font(.system(size: 12)).foregroundStyle(.secondary).textSelection(.enabled)
+                        Text(markdown(body, repo: session.gitHubRepo)).font(.system(size: 12)).foregroundStyle(.secondary).textSelection(.enabled)
                             .lineLimit(8)
                     }
                     HStack(spacing: 8) {

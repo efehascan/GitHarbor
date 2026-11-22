@@ -11,6 +11,7 @@ struct GitHarborApp: App {
             MainView(store: store)
                 .frame(minWidth: 860, minHeight: 520)
                 .task {
+                    await Snapshot.runAPISmokeIfRequested()
                     store.start()
                     Snapshot.runIfRequested(store: store)
                 }

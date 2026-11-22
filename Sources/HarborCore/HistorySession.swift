@@ -17,6 +17,8 @@ public final class HistorySession {
 
     public private(set) var branches: [BranchInfo] = []
     public private(set) var tags: [TagInfo] = []
+    /// Mesajlardaki #123 bağlantıları için.
+    public private(set) var gitHubRepo: GitHubRepoID?
     public private(set) var busy = false
     public var lastError: String?
 
@@ -50,6 +52,7 @@ public final class HistorySession {
         async let t = try? Git.tags(in: repo.path)
         branches = await b ?? []
         tags = await t ?? []
+        if gitHubRepo == nil { gitHubRepo = await Git.gitHubRepo(in: repo.path) }
         guard force || sha != headSHA || commits.isEmpty else { return }
         headSHA = sha
         loading = true

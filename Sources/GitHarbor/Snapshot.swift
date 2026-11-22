@@ -21,6 +21,30 @@ enum Snapshot {
         return args[i + 1]
     }
 
+    /// `--api-smoke owner/repo`: GitHub CLI token'ıyla (kaydetmeden) kullanıcıyı, açık PR'ları ve CI özetini yazar.
+    @MainActor
+    static func runAPISmokeIfRequested() async {
+        guard let slug = value(after: "--api-smoke") else { return }
+        let parts = slug.split(separator: "/").map(String.init)
+        guard parts.count == 2, let token = TokenStore.tokenFromGitHubCLI() else { print("token yok"); exit(2) }
+        let api = GitHubAPI(token: token)
+        let repo = GitHubRepoID(owner: parts[0], name: parts[1])
+        do {
+            print("kullanıcı:", try await api.currentUser().login)
+            print("varsayılan dal:", try await api.defaultBranch(repo))
+            let prs = try await api.pullRequests(repo)
+            print("açık PR:", prs.count)
+            for pr in prs.prefix(3) {
+                let summary = GitHubParsing.summarize(try await api.checkRuns(repo, sha: pr.head.sha))
+                print(" #\(pr.number) \(pr.head.ref) → \(pr.base.ref) taslak:\(pr.draft) CI:\(summary)")
+            }
+            exit(0)
+        } catch {
+            print("hata:", error)
+            exit(1)
+        }
+    }
+
     @MainActor
     static func runIfRequested(store: HarborStore) {
         guard let output = outputPath else { return }

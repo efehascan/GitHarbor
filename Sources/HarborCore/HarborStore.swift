@@ -11,6 +11,7 @@ public final class HarborStore {
     public internal(set) var statuses: [UUID: RepoStatus] = [:]
     public private(set) var errors: [UUID: String] = [:]
     public var selection: UUID?
+    public let github = GitHubAccount()
     public internal(set) var sync: [UUID: RepoSyncState] = [:]
     public internal(set) var settings: SyncSettings = HarborStore.loadSettings()
     /// Elle başlatılan senkron işleminin hatası (uyarı olarak gösterilir).

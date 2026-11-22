@@ -8,9 +8,11 @@ struct RepoDetailView: View {
     @State private var session: ChangesSession
     @State private var history: HistorySession
     /// Görüntü modunda `--history` ile Geçmiş sekmesiyle açılır.
-    @State private var tab: Tab = CommandLine.arguments.contains("--history") ? .history : .changes
+    @State private var pulls: PullRequestSession
+    @State private var tab: Tab = CommandLine.arguments.contains("--history") ? .history
+        : CommandLine.arguments.contains("--pulls") ? .pulls : .changes
 
-    enum Tab: String, CaseIterable { case changes = "Değişiklikler", history = "Geçmiş" }
+    enum Tab: String, CaseIterable { case changes = "Değişiklikler", history = "Geçmiş", pulls = "Pull Request" }
 
     init(store: HarborStore, repo: RepoEntry) {
         self.store = store
@@ -19,6 +21,7 @@ struct RepoDetailView: View {
         let changed: () -> Void = { [weak store] in Task { await store?.refreshOperation(id) } }
         _session = State(initialValue: ChangesSession(repo: repo, onChange: changed))
         _history = State(initialValue: HistorySession(repo: repo, onChange: changed))
+        _pulls = State(initialValue: PullRequestSession(repo: repo, onChange: changed))
     }
 
     private var status: RepoStatus? { store.statuses[repo.id] }
@@ -43,6 +46,10 @@ struct RepoDetailView: View {
                     }
                 case .history:
                     HistoryView(session: history)
+                case .pulls:
+                    if let status {
+                        PullRequestsView(account: store.github, session: pulls, status: status)
+                    }
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -26,3 +26,12 @@ Mac için git istemcisi (macOS 26+, SwiftUI + AppKit). Git işlemleri sistemdeki
 
 ## Çalışma alanı kuralı
 Her depo ya tam bir klasörde ya da `ungrouped` içindedir. Depo adı verilmezse yolun son bileşeni. Yol karşılaştırması `URL(fileURLWithPath:).standardizedFileURL.path` ile (sondaki `/` önemsiz). Ad boşluklardan kırpılır, boş ad yok sayılır. Bilinmeyen kimlikler sessizce yok sayılır.
+
+## Fark (DiffParser)
+- Girdi `git diff --no-color --no-ext-diff [--cached] -- <yol>` metni; satırlara `\n` ile bölünür (sondaki boş satır yok sayılır).
+- Her `diff --git a/X b/Y` yeni bir `FileDiff` başlatır. İlk `@@`'ye kadar olan satırlar `header`'a aynen eklenir (`diff --git` satırı dahil).
+- Yollar: `--- a/X` → oldPath X, `--- /dev/null` → oldPath nil; `+++ b/Y` → newPath Y, `+++ /dev/null` → newPath nil. `---`/`+++` satırı yoksa (ikili dosya, salt yeniden adlandırma) yollar `rename from`/`rename to` satırından, o da yoksa `diff --git a/X b/Y` satırından (" b/" son geçtiği yerden bölünür).
+- `new file mode` → isNewFile, `deleted file mode` → isDeletedFile, `Binary files ` ile başlayan satır → isBinary.
+- `@@ -a[,b] +c[,d] @@[ bölüm]`: virgülsüz sayı 1 demektir. section = ikinci `@@`'den sonraki metin, baştaki tek boşluk atılmış.
+- Parça satırları (parça başladıktan sonra, yeni `diff --git` ya da `@@`'ye kadar): ilk karakter `' '` context, `'+'` added, `'-'` removed, `'\\'` noNewline; metin = ilk karakterden sonrası. Numara: context ikisini de alır ve ikisini artırır; removed eskiyi; added yeniyi; noNewline hiçbirini. Boş satır (karakter yok) context sayılır, metin "".
+- Parçanın içindeyken `---`/`+++` ile başlayan satır başlık DEĞİL, içerik satırıdır.

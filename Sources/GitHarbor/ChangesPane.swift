@@ -8,6 +8,9 @@ struct ChangesPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if session.operation != .none {
+                ConflictBanner(session: session)
+            }
             if session.status.isClean {
                 VStack(spacing: 10) {
                     Image(systemName: "checkmark.seal").font(.system(size: 30, weight: .light)).foregroundStyle(.tertiary)
@@ -69,7 +72,15 @@ struct ChangesPane: View {
         }
         .tag(change.id)
         .contextMenu {
-            if change.staged {
+            if change.kind == .conflicted {
+                Button("Benimkini Kullan") { Task { await session.resolve(change, take: .ours) } }
+                Button("Onlarınkini Kullan") { Task { await session.resolve(change, take: .theirs) } }
+                Button("Düzenleyicide Aç") {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: session.repo.path).appendingPathComponent(change.path))
+                }
+                Button("Çözüldü Olarak İşaretle") { Task { await session.markResolved(change) } }
+                Divider()
+            } else if change.staged {
                 Button("Commit'ten Çıkar") { Task { await session.unstage([change]) } }
             } else {
                 Button("Commit'e Ekle") { Task { await session.stage([change]) } }
@@ -195,5 +206,45 @@ private struct CommitBox: View {
         if session.amend { return "Son commit'i düzelt" }
         let n = Set(session.staged.map(\.path)).count
         return n == 0 ? "\(branch) dalına commit" : "\(n) dosyayı \(branch) dalına commit et"
+    }
+}
+
+/// Birleştirme / rebase sürerken: çakışma sayısı, iptal ve bitir.
+private struct ConflictBanner: View {
+    let session: ChangesSession
+
+    var body: some View {
+        let n = session.conflicts.count
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: n > 0 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                    .foregroundStyle(n > 0 ? Theme.color(.conflicted) : Theme.ahead)
+                Text(title).font(.system(size: 12, weight: .semibold))
+            }
+            Text(n > 0 ? "\(n) dosyada çakışma var. Sağ tıkla bir tarafı seç ya da dosyayı düzenleyip çözüldü işaretle."
+                       : "Bütün çakışmalar çözüldü. İşlemi bitirebilirsin.")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+            HStack {
+                Button("İptal et", role: .destructive) { Task { await session.abortOperation() } }
+                    .help("İşlemi iptal eder, işlemden önceki duruma döner")
+                Spacer()
+                Button(n > 0 ? "Çakışmaları çöz" : "Bitir") { Task { await session.continueOperation() } }
+                    .buttonStyle(.glassProminent)
+                    .disabled(n > 0)
+            }
+            .disabled(session.busy)
+        }
+        .padding(12)
+        .background(Theme.color(.conflicted).opacity(0.10))
+    }
+
+    private var title: String {
+        switch session.operation {
+        case .merge: "Birleştirme sürüyor"
+        case .rebase: "Rebase sürüyor"
+        case .cherryPick: "Cherry-pick sürüyor"
+        case .revert: "Geri alma (revert) sürüyor"
+        case .none: ""
+        }
     }
 }

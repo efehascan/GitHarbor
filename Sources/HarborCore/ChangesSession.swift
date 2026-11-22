@@ -21,6 +21,8 @@ public final class ChangesSession {
     }
 
     public private(set) var stashes: [StashEntry] = []
+    public private(set) var operation: RepoOperation = .none
+    public var conflicts: [FileChange] { status.changes.filter { $0.kind == .conflicted } }
     public private(set) var busy = false
     public var lastError: String?
 
@@ -42,6 +44,11 @@ public final class ChangesSession {
     // MARK: - Durum
 
     /// Depo durumu değişti: seçili dosya artık yoksa aynı yoldaki diğer kayda ya da ilk dosyaya geç.
+    public func update(status new: RepoStatus, operation op: RepoOperation) {
+        operation = op
+        update(status: new)
+    }
+
     public func update(status new: RepoStatus) {
         let changed = new != status
         status = new
@@ -173,6 +180,28 @@ public final class ChangesSession {
     public func drop(_ entry: StashEntry) async {
         await perform { try await Git.stashDrop(entry.ref, in: self.repo.path) }
         await loadStashes()
+    }
+
+    // MARK: - Çakışma
+
+    public func resolve(_ change: FileChange, take side: Git.ConflictSide) async {
+        await perform { try await Git.resolve(change.path, take: side, in: self.repo.path) }
+    }
+
+    public func markResolved(_ change: FileChange) async {
+        await perform { try await Git.markResolved(change.path, in: self.repo.path) }
+    }
+
+    public func abortOperation() async {
+        let op = operation
+        await perform { try await Git.abort(op, in: self.repo.path) }
+        operation = await Git.operation(in: repo.path)
+    }
+
+    public func continueOperation() async {
+        let op = operation
+        await perform { try await Git.continueOperation(op, in: self.repo.path) }
+        operation = await Git.operation(in: repo.path)
     }
 
     private func amendChanged() async {

@@ -10,7 +10,7 @@ struct MainView: View {
                 .navigationSplitViewColumnWidth(min: 230, ideal: 270, max: 380)
         } detail: {
             if let id = store.selection, let repo = store.workspace.repo(id) {
-                RepoDetailView(repo: repo, status: store.statuses[id], error: store.errors[id]) { store.refresh(id) }
+                RepoDetailView(store: store, repo: repo)
                     .id(id)
             } else {
                 EmptyState(hasRepos: !store.workspace.repos.isEmpty) {

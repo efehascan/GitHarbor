@@ -42,7 +42,7 @@ struct SidebarView: View {
     @ViewBuilder
     private func row(_ id: UUID) -> some View {
         if let repo = store.workspace.repo(id) {
-            RepoRow(repo: repo, status: store.statuses[id], error: store.errors[id],
+            RepoRow(repo: repo, status: store.statuses[id], error: store.errors[id], sync: store.sync[id],
                     renaming: renaming == id, draft: $draft, commit: { commitRename(repo: id) })
                 .tag(id)
                 .draggable(RepoLink.url(id))
@@ -161,6 +161,7 @@ private struct RepoRow: View {
     let repo: RepoEntry
     let status: RepoStatus?
     let error: String?
+    let sync: RepoSyncState?
     let renaming: Bool
     @Binding var draft: String
     let commit: () -> Void
@@ -186,6 +187,14 @@ private struct RepoRow: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 4)
+            if sync?.running != nil {
+                ProgressView().controlSize(.mini)
+            } else if sync?.operation ?? .none != .none {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.color(.conflicted))
+                    .font(.system(size: 10)).help("Birleştirme / rebase sürüyor")
+            } else if sync?.attention != nil {
+                Circle().fill(Theme.behind).frame(width: 6, height: 6).help(sync?.attention ?? "")
+            }
             if let status {
                 SyncBadge(ahead: status.ahead, behind: status.behind)
                 if !status.changes.isEmpty {

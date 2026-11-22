@@ -3,21 +3,27 @@ import SwiftUI
 
 /// Seçili deponun ekranı: başlık (dal, senkron, stash), solda değişiklikler ve commit kutusu, sağda fark.
 struct RepoDetailView: View {
+    let store: HarborStore
     let repo: RepoEntry
-    let status: RepoStatus?
-    let error: String?
     @State private var session: ChangesSession
 
-    init(repo: RepoEntry, status: RepoStatus?, error: String?, onChange: @escaping () -> Void) {
+    init(store: HarborStore, repo: RepoEntry) {
+        self.store = store
         self.repo = repo
-        self.status = status
-        self.error = error
-        _session = State(initialValue: ChangesSession(repo: repo, onChange: onChange))
+        let id = repo.id
+        _session = State(initialValue: ChangesSession(repo: repo, onChange: { [weak store] in
+            Task { await store?.refreshOperation(id) }
+        }))
     }
+
+    private var status: RepoStatus? { store.statuses[repo.id] }
+    private var error: String? { store.errors[repo.id] }
+    private var operation: RepoOperation { store.sync[repo.id]?.operation ?? .none }
 
     var body: some View {
         VStack(spacing: 0) {
             header
+            SyncBanner(store: store, id: repo.id)
             Divider()
             if let error {
                 message("exclamationmark.triangle", error)
@@ -34,12 +40,21 @@ struct RepoDetailView: View {
         }
         .navigationTitle(repo.name)
         .navigationSubtitle(status?.branch ?? "")
-        .task(id: status) { if let status { session.update(status: status) } }
-        .task { await session.loadStashes() }
+        .task(id: status) { if let status { session.update(status: status, operation: operation) } }
+        .task(id: operation) { if let status { session.update(status: status, operation: operation) } }
+        .task {
+            await session.loadStashes()
+            await store.refreshOperation(repo.id)
+        }
         .alert("İşlem yapılamadı", isPresented: Binding(get: { session.lastError != nil }, set: { if !$0 { session.lastError = nil } })) {
             Button("Tamam", role: .cancel) {}
         } message: {
             Text(session.lastError ?? "")
+        }
+        .alert("Senkron yapılamadı", isPresented: Binding(get: { store.syncAlert != nil }, set: { if !$0 { store.syncAlert = nil } })) {
+            Button("Tamam", role: .cancel) {}
+        } message: {
+            Text(store.syncAlert ?? "")
         }
     }
 
@@ -58,11 +73,8 @@ struct RepoDetailView: View {
             if let status {
                 Pill(icon: "arrow.triangle.branch", title: status.branch ?? "ayrık HEAD",
                      detail: status.upstream ?? "yayınlanmamış dal")
-                Pill(icon: "arrow.down.circle", title: "\(status.behind) gelen",
-                     detail: status.behind > 0 ? "çekilecek" : "güncel", tint: status.behind > 0 ? Theme.behind : nil)
-                Pill(icon: "arrow.up.circle", title: "\(status.ahead) giden",
-                     detail: status.ahead > 0 ? "gönderilecek" : "gönderilecek yok", tint: status.ahead > 0 ? Theme.ahead : nil)
                 StashButton(session: session)
+                SyncButton(store: store, id: repo.id, status: status)
             }
         }
         .padding(.horizontal, 22)

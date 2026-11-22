@@ -23,6 +23,8 @@ public enum Git {
         process.arguments = ["-C", directory, "--no-optional-locks"] + args
         var env = ProcessInfo.processInfo.environment
         env["GIT_TERMINAL_PROMPT"] = "0"
+        // SSH parola/onay sorarsa takılmasın: hata versin (kullanıcı ayarı varsa ona dokunma).
+        if env["GIT_SSH_COMMAND"] == nil { env["GIT_SSH_COMMAND"] = "ssh -o BatchMode=yes -o ConnectTimeout=15" }
         env["LC_ALL"] = "C"
         process.environment = env
         let out = Pipe(), err = Pipe()

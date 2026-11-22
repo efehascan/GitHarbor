@@ -2,19 +2,25 @@ import Foundation
 import Observation
 
 /// Uygulamanın durumu: çalışma alanı (kalıcı), depo durumları, seçim.
-/// Durum yalnızca açılışta ve dosya değişince (FSEvents) yenilenir; zamanlayıcıyla yoklama yok.
+/// Durum açılışta ve dosya değişince (FSEvents) yenilenir. Tek zamanlayıcı otomatik fetch kararı içindir
+/// (30 sn'de bir, git çalıştırmadan); fetch yalnızca ayar aralığı dolan depolarda yapılır.
 @MainActor
 @Observable
 public final class HarborStore {
     public private(set) var workspace: Workspace
-    public private(set) var statuses: [UUID: RepoStatus] = [:]
+    public internal(set) var statuses: [UUID: RepoStatus] = [:]
     public private(set) var errors: [UUID: String] = [:]
     public var selection: UUID?
+    public internal(set) var sync: [UUID: RepoSyncState] = [:]
+    public internal(set) var settings: SyncSettings = HarborStore.loadSettings()
+    /// Elle başlatılan senkron işleminin hatası (uyarı olarak gösterilir).
+    public var syncAlert: String?
 
     @ObservationIgnored private let fileURL: URL?
     @ObservationIgnored private var watcher: RepoWatcher?
     @ObservationIgnored private var inFlight = Set<UUID>()
     @ObservationIgnored private var pending = Set<UUID>()
+    @ObservationIgnored var autoTimer: Timer?
 
     /// `fileURL` nil ise kaydetmez (önizleme, test).
     public init(fileURL: URL? = HarborStore.defaultFileURL) {
@@ -43,6 +49,7 @@ public final class HarborStore {
         }
         rewatch()
         refreshAll()
+        startAutoSync()
     }
 
     public func refreshAll() {
@@ -57,8 +64,11 @@ public final class HarborStore {
         Task {
             do {
                 let status = try await Git.status(in: repo.path)
+                let firstLoad = statuses[id] == nil
                 statuses[id] = status
                 errors[id] = nil
+                // Açılışta durumlar geldikçe otomatik fetch başlasın (30 sn'lik turu beklemesin).
+                if firstLoad && settings.autoFetch && sync[id]?.lastFetch == nil { autoTick() }
             } catch {
                 errors[id] = FileManager.default.fileExists(atPath: repo.path) ? "\(error)" : "Klasör bulunamadı"
             }

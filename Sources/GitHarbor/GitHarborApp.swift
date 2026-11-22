@@ -16,6 +16,10 @@ struct GitHarborApp: App {
                 }
         }
         .windowToolbarStyle(.unified)
+
+        Settings {
+            SettingsView(store: store)
+        }
         .commands {
             CommandGroup(after: .newItem) {
                 Button("Depo Ekle…") { AddRepository.present(store: store) }

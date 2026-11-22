@@ -16,6 +16,10 @@ struct MainView: View {
                 EmptyState(hasRepos: !store.workspace.repos.isEmpty) {
                     AddRepository.present(store: store)
                 }
+                .dropDestination(for: URL.self) { items, _ in
+                    let files = items.filter(\.isFileURL)
+                    Task { await store.addRepositories(at: files) }
+                }
             }
         }
         .toolbar {
@@ -45,7 +49,7 @@ private struct EmptyState: View {
             Text(hasRepos ? "Bir depo seç" : "Limana hoş geldin")
                 .font(.title2.weight(.semibold))
             Text(hasRepos ? "Soldan bir depo seçerek değişikliklerini gör."
-                          : "Depolarını ekle, klasörlere ayır, hepsini tek yerden izle.")
+                          : "Depo klasörlerini buraya sürükle ya da ekle; klasörlere ayır, hepsini tek yerden izle.")
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 320)

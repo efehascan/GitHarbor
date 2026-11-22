@@ -19,13 +19,13 @@ struct SidebarView: View {
                 } header: {
                     folderHeader(folder)
                 }
-                .dropDestination(for: String.self) { items, _ in drop(items, into: folder.id) }
+                .dropDestination(for: URL.self) { items, _ in drop(items, into: folder.id) }
             }
             Section(store.workspace.folders.isEmpty ? "Depolar" : "Klasörsüz") {
                 ForEach(visible(store.workspace.ungrouped), id: \.self) { id in row(id) }
                     .onMove { from, to in move(in: nil, ids: store.workspace.ungrouped, from: from, to: to) }
             }
-            .dropDestination(for: String.self) { items, _ in drop(items, into: nil) }
+            .dropDestination(for: URL.self) { items, _ in drop(items, into: nil) }
         }
         .listStyle(.sidebar)
         .searchable(text: $filter, placement: .sidebar, prompt: "Depo ara")
@@ -45,7 +45,7 @@ struct SidebarView: View {
             RepoRow(repo: repo, status: store.statuses[id], error: store.errors[id],
                     renaming: renaming == id, draft: $draft, commit: { commitRename(repo: id) })
                 .tag(id)
-                .draggable(id.uuidString)
+                .draggable(RepoLink.url(id))
                 .contextMenu { repoMenu(repo) }
         }
     }
@@ -127,10 +127,12 @@ struct SidebarView: View {
                 set: { if $0 { collapsed.remove(id) } else { collapsed.insert(id) } })
     }
 
-    private func drop(_ items: [String], into folder: UUID?) {
-        let ids = items.compactMap(UUID.init(uuidString:))
-        guard !ids.isEmpty else { return }
-        store.edit { w in for id in ids { w.move(repo: id, to: folder) } }
+    /// Uygulama içinden sürüklenen depo taşınır; Finder'dan gelen klasörler depo olarak eklenir.
+    private func drop(_ items: [URL], into folder: UUID?) {
+        let ids = items.compactMap(RepoLink.id)
+        if !ids.isEmpty { store.edit { w in for id in ids { w.move(repo: id, to: folder) } } }
+        let files = items.filter(\.isFileURL)
+        if !files.isEmpty { Task { await store.addRepositories(at: files, into: folder) } }
     }
 
     private func move(in folder: UUID?, ids: [UUID], from: IndexSet, to: Int) {
@@ -203,5 +205,17 @@ private struct RepoRow: View {
         if let error { return error }
         guard let status else { return "…" }
         return status.branch ?? "ayrık HEAD " + String((status.commit ?? "").prefix(7))
+    }
+}
+
+/// Uygulama içi sürükleme yükü: `githarbor://repo/<UUID>`.
+enum RepoLink {
+    static func url(_ id: UUID) -> URL {
+        URL(string: "githarbor://repo/" + id.uuidString) ?? URL(fileURLWithPath: "/")
+    }
+
+    static func id(_ url: URL) -> UUID? {
+        guard url.scheme == "githarbor", url.host == "repo" else { return nil }
+        return UUID(uuidString: url.lastPathComponent)
     }
 }

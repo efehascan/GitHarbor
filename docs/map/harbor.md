@@ -44,3 +44,8 @@ Her depo ya tam bir klasörde ya da `ungrouped` içindedir. Depo adı verilmezse
 - `repoID(fromRemote:)`: önce baştaki/sondaki boşluk kırpılır. Biçimler: `https://[kullanıcı@]github.com/O/R[.git][/]`, `ssh://git@github.com/O/R[.git]`, `git@github.com:O/R[.git]`. Sunucu tam olarak `github.com` olmalı (büyük/küçük harf duyarsız). Yol tam iki parça olmalı (sondaki `/` önemsiz); R sonundaki `.git` atılır (yalnızca sondaki). Aksi nil.
 - `summarize`: boş → `.none`. Başarısız sayılanlar: `completed` ve conclusion ∈ {failure, timed_out, cancelled, action_required, startup_failure, stale}. Herhangi biri başarısızsa `.failure(failed:, total:)`. Değilse tamamlanmamış (status != "completed") varsa `.pending(done: tamamlanan, total:)`. Değilse `.success(total:)` (success, neutral, skipped başarılı sayılır).
 - `issueNumbers(in:)`: `#` ardından en az bir rakam; `#`'tan önceki karakter harf ya da rakamsa sayılmaz; rakamlardan hemen sonra harf geliyorsa (ör. `#0x`) sayılmaz. Sıra korunur, tekrarlar atılır.
+
+## Komut paleti (FuzzyMatch)
+- `score`: ikisi de `lowercased(with: Locale(identifier: "tr"))` ile küçültülür, sonra `folding(options: .diacriticInsensitive, locale: nil)` uygulanmaz (ç, ş korunur). Sorgu boşsa 0. Sorgunun her karakteri adayda soldan sağa açgözlü aranır; bulunamazsa nil.
+- Puan: her eşleşen karakter +1; aday başındaysa +8; kelime başındaysa (önceki karakter boşluk, `-`, `_`, `/`, `.` ya da küçük harften sonra büyük harf — büyük/küçük kontrolü özgün adayda) +5; bir önceki eşleşmenin hemen ardındaysa +4; eşleşmeler arası atlanan karakter başına −1 (ilk eşleşmeden önceki karakterler sayılmaz).
+- `rank`: (puan, öğe, özgün indeks) üçlüleri; nil olanlar atılır; puana göre azalan, eşitse anahtar uzunluğu artan, o da eşitse özgün indeks artan.

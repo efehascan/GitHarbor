@@ -19,7 +19,8 @@ public extension Git {
     // MARK: - Fark
 
     /// Bir dosyanın farkı. İzlenmeyen dosya `--no-index` ile boş dosyaya karşı karşılaştırılır.
-    static func diff(path: String, staged: Bool, untracked: Bool, in repo: String) async throws -> FileDiff? {
+    /// Yeniden adlandırmada `oldPath` verilmeli: git ikisini birlikte görürse farkı yeniden adlandırma olarak gösterir.
+    static func diff(path: String, oldPath: String? = nil, staged: Bool, untracked: Bool, in repo: String) async throws -> FileDiff? {
         let text: String
         if untracked {
             let data = try await run(["diff", "--no-color", "--no-ext-diff", "--no-index", "--", "/dev/null", path],
@@ -28,10 +29,11 @@ public extension Git {
         } else {
             var args = ["diff", "--no-color", "--no-ext-diff", "--find-renames"]
             if staged { args.append("--cached") }
-            args += ["--", path]
+            args += ["--"] + (oldPath.map { [$0] } ?? []) + [path]
             text = String(decoding: try await run(args, in: repo), as: UTF8.self)
         }
-        return DiffParser.parse(text).first
+        let files = DiffParser.parse(text)
+        return files.first { $0.newPath == path } ?? files.first
     }
 
     // MARK: - Sahne

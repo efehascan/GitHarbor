@@ -12,6 +12,8 @@ public final class HarborStore {
     public private(set) var errors: [UUID: String] = [:]
     public var selection: UUID?
     public let github = GitHubAccount()
+    /// Senkron olayları (uygulama bildirim olarak gösterir).
+    @ObservationIgnored public var onEvent: ((SyncEvent) -> Void)?
     public internal(set) var sync: [UUID: RepoSyncState] = [:]
     public internal(set) var settings: SyncSettings = HarborStore.loadSettings()
     /// Elle başlatılan senkron işleminin hatası (uyarı olarak gösterilir).

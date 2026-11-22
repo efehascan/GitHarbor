@@ -24,6 +24,7 @@ struct SyncButton: View {
                     }
                 }
                 .padding(.leading, 12).padding(.trailing, 8).padding(.vertical, 7)
+                .fixedSize()
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -169,6 +170,7 @@ struct SettingsView: View {
                 Text("Yalnızca çalışma klasörü temizken ve yerel commit yokken ileri sarılır; aksi halde depoda uyarı gösterilir. Senin işin hiçbir zaman değiştirilmez.")
                     .font(.caption).foregroundStyle(.secondary)
                 Toggle("Düşük güç modunda duraklat", isOn: binding(\.pauseOnLowPower))
+                Toggle("Otomatik çekince ve dikkat gerektiğinde bildir", isOn: binding(\.notify))
             }
             Section("GitHub") {
                 if let user = store.github.user {

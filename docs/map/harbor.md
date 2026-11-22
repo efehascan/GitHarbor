@@ -47,5 +47,5 @@ Her depo ya tam bir klasörde ya da `ungrouped` içindedir. Depo adı verilmezse
 
 ## Komut paleti (FuzzyMatch)
 - `score`: ikisi de `lowercased(with: Locale(identifier: "tr"))` ile küçültülür, sonra `folding(options: .diacriticInsensitive, locale: nil)` uygulanmaz (ç, ş korunur). Sorgu boşsa 0. Sorgunun her karakteri adayda soldan sağa açgözlü aranır; bulunamazsa nil.
-- Puan: her eşleşen karakter +1; aday başındaysa +8; kelime başındaysa (önceki karakter boşluk, `-`, `_`, `/`, `.` ya da küçük harften sonra büyük harf — büyük/küçük kontrolü özgün adayda) +5; bir önceki eşleşmenin hemen ardındaysa +4; eşleşmeler arası atlanan karakter başına −1 (ilk eşleşmeden önceki karakterler sayılmaz).
+- Puan: her eşleşen karakter +1; aday başındaysa +8; kelime başındaysa (önceki karakter boşluk, `-`, `_`, `/`, `.` ya da küçük harften sonra büyük harf — büyük/küçük kontrolü özgün adayda) +5; bir önceki eşleşmenin hemen ardındaysa +6 (bitişik eşleşme dağınık kelime başlarından iyi olsun); eşleşmeler arası atlanan karakter başına −1 (ilk eşleşmeden önceki karakterler sayılmaz).
 - `rank`: (puan, öğe, özgün indeks) üçlüleri; nil olanlar atılır; puana göre azalan, eşitse anahtar uzunluğu artan, o da eşitse özgün indeks artan.

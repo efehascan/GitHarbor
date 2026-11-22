@@ -5,13 +5,19 @@ import SwiftUI
 @main
 struct GitHarborApp: App {
     @State private var store = HarborStore(fileURL: Snapshot.workspaceURL ?? HarborStore.defaultFileURL)
+    @State private var ui = UIState()
 
     var body: some Scene {
         Window("Git Harbor Desktop", id: "main") {
             MainView(store: store)
+                .environment(ui)
                 .frame(minWidth: 860, minHeight: 520)
                 .task {
                     await Snapshot.runAPISmokeIfRequested()
+                    Snapshot.applyTestOptions(store: store)
+                    if Snapshot.outputPath == nil {
+                        store.onEvent = { Notifier.post($0) }
+                    }
                     store.start()
                     Snapshot.runIfRequested(store: store)
                 }
@@ -22,6 +28,13 @@ struct GitHarborApp: App {
         Settings {
             SettingsView(store: store)
         }
+
+        MenuBarExtra {
+            MenuBarView(store: store)
+        } label: {
+            MenuBarLabel(store: store)
+        }
+        .menuBarExtraStyle(.window)
         .commands {
             CommandGroup(after: .newItem) {
                 Button("Depo Ekle…") { AddRepository.present(store: store) }
@@ -30,8 +43,17 @@ struct GitHarborApp: App {
                     .keyboardShortcut("n", modifiers: [.command, .shift])
             }
             CommandGroup(after: .toolbar) {
+                Button("Komut Paleti") { ui.paletteOpen.toggle() }
+                    .keyboardShortcut("k")
                 Button("Yenile") { store.refreshAll() }
                     .keyboardShortcut("r")
+                Button("Bütün Depoları Getir") { store.fetchAll() }
+                    .keyboardShortcut("f", modifiers: [.command, .shift])
+                Divider()
+                ForEach(Array(RepoTab.allCases.enumerated()), id: \.offset) { i, tab in
+                    Button(tab.rawValue) { ui.tab = tab }
+                        .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")))
+                }
             }
         }
     }

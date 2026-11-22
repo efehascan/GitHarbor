@@ -1,5 +1,6 @@
 import AppKit
 import HarborCore
+import SwiftUI
 
 /// `--snapshot çıktı.png [--workspace ws.json] [--select AD]`: pencereyi açar, durumlar gelince
 /// pencerenin görüntüsünü PNG'ye yazar ve çıkar. Görsel kontrol içindir; kalıcı çalışma alanına dokunmaz.
@@ -45,16 +46,51 @@ enum Snapshot {
         }
     }
 
+    /// Görsel test seçenekleri (scripts/visual-test.sh): `--appearance light|dark`, `--size 1320x820`, `--settings`.
+    @MainActor
+    static func applyTestOptions(store: HarborStore) {
+        if let name = value(after: "--select") {
+            store.selection = store.workspace.repos.first { $0.name == name }?.id
+        }
+        switch value(after: "--appearance") {
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        default: break
+        }
+        if let size = value(after: "--size") {
+            let p = size.split(separator: "x").compactMap { Double($0) }
+            if p.count == 2, let w = NSApp.windows.first(where: { $0.title == "Git Harbor Desktop" }) {
+                w.setFrame(NSRect(x: 80, y: 80, width: p[0], height: p[1]), display: true)
+            }
+        }
+    }
+
     @MainActor
     static func runIfRequested(store: HarborStore) {
         guard let output = outputPath else { return }
         if let name = value(after: "--select") {
             store.selection = store.workspace.repos.first { $0.name == name }?.id
         }
+        let args = CommandLine.arguments
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(2.5))
-            guard let window = NSApp.windows.first(where: { $0.isVisible }) ,
-                  let view = window.contentView?.superview ?? window.contentView,
+            try? await Task.sleep(for: .seconds(args.contains("--slow") ? 6 : 3))
+            let window: NSWindow?
+            if args.contains("--settings") {
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                try? await Task.sleep(for: .seconds(1))
+                window = NSApp.windows.first { $0.isVisible && $0.title != "Git Harbor Desktop" && $0.frame.width > 300 }
+            } else if args.contains("--menubar") {
+                let host = NSHostingView(rootView: MenuBarView(store: store).background(.background))
+                host.frame = NSRect(origin: .zero, size: host.fittingSize)
+                let w = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                w.contentView = host
+                w.orderFront(nil)
+                try? await Task.sleep(for: .seconds(0.5))
+                window = w
+            } else {
+                window = NSApp.windows.filter { $0.isVisible }.max { $0.frame.width < $1.frame.width }
+            }
+            guard let window, let view = window.contentView?.superview ?? window.contentView,
                   let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { exit(1) }
             view.cacheDisplay(in: view.bounds, to: rep)
             try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: output))

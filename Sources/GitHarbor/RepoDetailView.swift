@@ -9,10 +9,8 @@ struct RepoDetailView: View {
     @State private var history: HistorySession
     /// Görüntü modunda `--history` ile Geçmiş sekmesiyle açılır.
     @State private var pulls: PullRequestSession
-    @State private var tab: Tab = CommandLine.arguments.contains("--history") ? .history
-        : CommandLine.arguments.contains("--pulls") ? .pulls : .changes
-
-    enum Tab: String, CaseIterable { case changes = "Değişiklikler", history = "Geçmiş", pulls = "Pull Request" }
+    @Environment(UIState.self) private var ui
+    private var tab: RepoTab { ui.tab }
 
     init(store: HarborStore, repo: RepoEntry) {
         self.store = store
@@ -55,6 +53,16 @@ struct RepoDetailView: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("Görünüm", selection: Binding(get: { ui.tab }, set: { ui.tab = $0 })) {
+                    ForEach(RepoTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .help("⌘1 · ⌘2 · ⌘3")
+            }
+        }
         .navigationTitle(repo.name)
         .navigationSubtitle(status?.branch ?? "")
         .task(id: status) {
@@ -87,7 +95,7 @@ struct RepoDetailView: View {
     private var header: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(repo.name).font(.title2.weight(.semibold))
+                Text(repo.name).font(.title2.weight(.semibold)).lineLimit(1)
                 Text(abbreviated(repo.path))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
@@ -95,17 +103,11 @@ struct RepoDetailView: View {
                     .truncationMode(.middle)
                     .textSelection(.enabled)
             }
-            Spacer()
-            Picker("", selection: $tab) {
-                ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            Spacer()
+            .layoutPriority(1)
+            Spacer(minLength: 12)
             if let status {
-                BranchButton(session: history, status: status)
-                StashButton(session: session)
+                BranchButton(session: history, status: status, request: ui.branchPanelRequest)
+                StashButton(session: session, request: ui.stashRequest)
                 SyncButton(store: store, id: repo.id, status: status)
             }
         }
@@ -145,6 +147,8 @@ struct Pill: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
+        .frame(maxWidth: 220)
+        .fixedSize()
         .glassEffect(.regular, in: .rect(cornerRadius: 10))
     }
 }
@@ -152,6 +156,7 @@ struct Pill: View {
 /// Stash: değişiklikleri sakla, listedekileri geri getir ya da sil.
 private struct StashButton: View {
     let session: ChangesSession
+    let request: Int
     @State private var open = false
     @State private var note = ""
 
@@ -168,6 +173,7 @@ private struct StashButton: View {
         }
         .help("Saklanan değişiklikler (stash)")
         .buttonStyle(.plain)
+        .onChange(of: request) { open = true }
         .popover(isPresented: $open, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Saklanan değişiklikler").font(.headline)

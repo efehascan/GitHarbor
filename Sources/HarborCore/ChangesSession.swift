@@ -65,6 +65,7 @@ public final class ChangesSession {
 
     public func select(_ change: FileChange?) {
         guard change != selected || diff == nil else { return }
+        if change?.id != selected?.id { diff = nil }      // eski dosyanın farkı yenisi gelene kadar görünmesin
         selected = change
         lineSelection = []
         reloadDiff(keepSelection: false)
@@ -76,8 +77,9 @@ public final class ChangesSession {
         guard let change = selected else { diff = nil; return }
         diffLoading = true
         Task {
-            let result = try? await Git.diff(path: change.path, staged: change.staged,
-                                             untracked: change.kind == .untracked, in: repo.path)
+            let result = try? await Git.diff(path: change.path, oldPath: change.oldPath, staged: change.staged,
+                                             // Çakışmalı dosya: birleşik (--cc) fark yerine işaretli içeriğin tamamı.
+                                             untracked: change.kind == .untracked || change.kind == .conflicted, in: repo.path)
             guard token == diffToken else { return }
             if !keepSelection || result != diff { lineSelection = [] }
             diff = result

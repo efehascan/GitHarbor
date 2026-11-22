@@ -76,15 +76,36 @@ extension HarborStore {
         case .fastForward:
             if automatic || settings.autoPull {
                 await run(id, .pulling, quietErrors: automatic) { try await Git.fastForward(in: repo.path) }
+                if automatic, sync[id]?.error == nil, settings.notify {
+                    onEvent?(.pulled(repo: repo.name, commits: status.behind, branch: status.branch ?? ""))
+                }
             }
             sync[id, default: RepoSyncState()].attention = nil
         case .needsAttention(let reason):
+            if automatic, settings.notify, sync[id]?.attention != reason {
+                onEvent?(.attention(repo: repo.name, reason: reason))
+            }
             sync[id, default: RepoSyncState()].attention = reason
         case .nothing:
             sync[id, default: RepoSyncState()].attention = nil
         }
         refresh(id)
         if automatic { autoTick() }      // boşalan yere sıradaki depo
+    }
+
+    /// Bütün depoları getirir (en fazla 4 paralel).
+    public func fetchAll() {
+        let ids = workspace.repos.map(\.id)
+        Task {
+            await withTaskGroup(of: Void.self) { group in
+                var started = 0
+                for id in ids {
+                    if started >= 4 { await group.next() }
+                    group.addTask { await self.fetch(id) }
+                    started += 1
+                }
+            }
+        }
     }
 
     public func pull(_ id: UUID, mode: Git.PullMode) async {

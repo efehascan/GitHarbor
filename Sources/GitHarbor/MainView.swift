@@ -3,6 +3,8 @@ import SwiftUI
 
 struct MainView: View {
     @Bindable var store: HarborStore
+    @Environment(UIState.self) private var ui
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         NavigationSplitView {
@@ -21,6 +23,19 @@ struct MainView: View {
                     Task { await store.addRepositories(at: files) }
                 }
             }
+        }
+        .overlay(alignment: .top) {
+            if ui.paletteOpen {
+                ZStack(alignment: .top) {
+                    Color.black.opacity(0.12).ignoresSafeArea()
+                        .onTapGesture { ui.paletteOpen = false }
+                    CommandPalette(store: store, ui: ui)
+                        .padding(.top, 90)
+                }
+            }
+        }
+        .task {
+            if CommandLine.arguments.contains("--settings") { openSettings() }   // görsel test
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {

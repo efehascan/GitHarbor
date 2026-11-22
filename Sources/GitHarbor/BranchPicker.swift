@@ -5,7 +5,9 @@ import SwiftUI
 struct BranchButton: View {
     let session: HistorySession
     let status: RepoStatus
+    let request: Int
     @State private var open = false
+    @State private var startCreating = false
 
     var body: some View {
         Button { open.toggle() } label: {
@@ -14,9 +16,12 @@ struct BranchButton: View {
         }
         .buttonStyle(.plain)
         .help("Dallar")
+        .onChange(of: request) { startCreating = true; open = true }
         .popover(isPresented: $open, arrowEdge: .bottom) {
-            BranchPanel(session: session, current: status.branch, dirty: !status.changes.filter { $0.kind != .untracked }.isEmpty) {
+            BranchPanel(session: session, current: status.branch, dirty: !status.changes.filter { $0.kind != .untracked }.isEmpty,
+                        creating: startCreating) {
                 open = false
+                startCreating = false
             }
         }
         .task(id: open) { if open { await session.reload() } }
@@ -28,10 +33,17 @@ private struct BranchPanel: View {
     let current: String?
     let dirty: Bool
     let close: () -> Void
-
     @State private var query = ""
     @State private var newName = ""
-    @State private var creating = false
+    @State private var creating: Bool
+
+    init(session: HistorySession, current: String?, dirty: Bool, creating: Bool, close: @escaping () -> Void) {
+        self.session = session
+        self.current = current
+        self.dirty = dirty
+        self.close = close
+        _creating = State(initialValue: creating)
+    }
     @State private var renaming: BranchInfo?
     @State private var confirmDelete: BranchInfo?
 

@@ -1,13 +1,19 @@
 import HarborCore
 import SwiftUI
 
-/// Seçili deponun başlığı (dal, senkron durumu) ve değişiklik listesi.
-/// Fark görünümü ve commit 2. aşamada bu ekrana eklenecek.
+/// Seçili deponun ekranı: başlık (dal, senkron, stash), solda değişiklikler ve commit kutusu, sağda fark.
 struct RepoDetailView: View {
     let repo: RepoEntry
     let status: RepoStatus?
     let error: String?
-    @State private var selected: FileChange.ID?
+    @State private var session: ChangesSession
+
+    init(repo: RepoEntry, status: RepoStatus?, error: String?, onChange: @escaping () -> Void) {
+        self.repo = repo
+        self.status = status
+        self.error = error
+        _session = State(initialValue: ChangesSession(repo: repo, onChange: onChange))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,11 +21,12 @@ struct RepoDetailView: View {
             Divider()
             if let error {
                 message("exclamationmark.triangle", error)
-            } else if let status {
-                if status.isClean {
-                    message("checkmark.seal", "Çalışma klasörü temiz")
-                } else {
-                    changeList(status)
+            } else if status != nil {
+                HSplitView {
+                    ChangesPane(session: session)
+                        .frame(minWidth: 280, idealWidth: 330, maxWidth: 460)
+                    DiffPane(session: session)
+                        .frame(minWidth: 380, maxWidth: .infinity)
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -27,10 +34,17 @@ struct RepoDetailView: View {
         }
         .navigationTitle(repo.name)
         .navigationSubtitle(status?.branch ?? "")
+        .task(id: status) { if let status { session.update(status: status) } }
+        .task { await session.loadStashes() }
+        .alert("İşlem yapılamadı", isPresented: Binding(get: { session.lastError != nil }, set: { if !$0 { session.lastError = nil } })) {
+            Button("Tamam", role: .cancel) {}
+        } message: {
+            Text(session.lastError ?? "")
+        }
     }
 
     private var header: some View {
-        HStack(spacing: 18) {
+        HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(repo.name).font(.title2.weight(.semibold))
                 Text(abbreviated(repo.path))
@@ -48,29 +62,11 @@ struct RepoDetailView: View {
                      detail: status.behind > 0 ? "çekilecek" : "güncel", tint: status.behind > 0 ? Theme.behind : nil)
                 Pill(icon: "arrow.up.circle", title: "\(status.ahead) giden",
                      detail: status.ahead > 0 ? "gönderilecek" : "gönderilecek yok", tint: status.ahead > 0 ? Theme.ahead : nil)
+                StashButton(session: session)
             }
         }
         .padding(.horizontal, 22)
-        .padding(.vertical, 16)
-    }
-
-    private func changeList(_ status: RepoStatus) -> some View {
-        let staged = status.changes.filter(\.staged)
-        let unstaged = status.changes.filter { !$0.staged }
-        return List(selection: $selected) {
-            if !staged.isEmpty {
-                Section("Commit'e hazır · \(staged.count)") {
-                    ForEach(staged) { ChangeRow(change: $0).tag($0.id) }
-                }
-            }
-            if !unstaged.isEmpty {
-                Section("Değişiklikler · \(unstaged.count)") {
-                    ForEach(unstaged) { ChangeRow(change: $0).tag($0.id) }
-                }
-            }
-        }
-        .listStyle(.inset)
-        .scrollContentBackground(.hidden)
+        .padding(.vertical, 14)
     }
 
     private func message(_ icon: String, _ text: String) -> some View {
@@ -87,7 +83,7 @@ struct RepoDetailView: View {
     }
 }
 
-private struct Pill: View {
+struct Pill: View {
     let icon: String
     let title: String
     let detail: String
@@ -109,31 +105,67 @@ private struct Pill: View {
     }
 }
 
-private struct ChangeRow: View {
-    let change: FileChange
+/// Stash: değişiklikleri sakla, listedekileri geri getir ya da sil.
+private struct StashButton: View {
+    let session: ChangesSession
+    @State private var open = false
+    @State private var note = ""
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text(Theme.letter(change.kind))
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .frame(width: 17, height: 17)
-                .background(Theme.color(change.kind).gradient, in: RoundedRectangle(cornerRadius: 4.5))
-                .help(Theme.label(change.kind))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(fileName).lineLimit(1)
-                if !directory.isEmpty || change.oldPath != nil {
-                    Text(change.oldPath.map { "\($0) → " } ?? directory)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+        Button { open.toggle() } label: {
+            Pill(icon: "tray.full", title: "\(session.stashes.count) saklı", detail: "stash")
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Saklanan değişiklikler").font(.headline)
+                HStack {
+                    TextField("Not (isteğe bağlı)", text: $note)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Sakla") {
+                        let n = note
+                        note = ""
+                        Task { await session.stash(message: n) }
+                    }
+                    .disabled(session.status.isClean || session.busy)
+                }
+                Text("Bütün değişiklikler (izlenmeyen dosyalar dahil) saklanır, çalışma klasörü temizlenir.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Divider()
+                if session.stashes.isEmpty {
+                    Text("Saklı değişiklik yok").foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, alignment: .center).padding(.vertical, 8)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 6) {
+                            ForEach(session.stashes) { entry in
+                                HStack(spacing: 8) {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(entry.message).lineLimit(1)
+                                        Text("\(entry.ref) · \(entry.relativeDate)").font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Button("Geri getir") { Task { await session.restore(entry, pop: true) } }
+                                        .help("Değişiklikleri geri getirir ve saklananı siler (pop)")
+                                    Menu {
+                                        Button("Uygula, saklı kalsın") { Task { await session.restore(entry, pop: false) } }
+                                        Divider()
+                                        Button("Sil", role: .destructive) { Task { await session.drop(entry) } }
+                                    } label: { Image(systemName: "ellipsis") }
+                                        .menuStyle(.borderlessButton)
+                                        .fixedSize()
+                                }
+                                .padding(8)
+                                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 260)
                 }
             }
+            .padding(16)
+            .frame(width: 380)
+            .disabled(session.busy)
         }
-        .padding(.vertical, 1)
     }
-
-    private var fileName: String { (change.path as NSString).lastPathComponent }
-    private var directory: String { (change.path as NSString).deletingLastPathComponent }
 }

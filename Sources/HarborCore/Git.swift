@@ -11,13 +11,13 @@ public struct GitError: Error, CustomStringConvertible, Sendable {
 public enum Git {
     public static var executable = URL(fileURLWithPath: "/usr/bin/git")
 
-    public static func run(_ args: [String], in directory: String) async throws -> Data {
+    public static func run(_ args: [String], in directory: String, allowedExitCodes: Set<Int32> = [0]) async throws -> Data {
         try await Task.detached(priority: .utility) {
-            try runSync(args, in: directory)
+            try runSync(args, in: directory, allowedExitCodes: allowedExitCodes)
         }.value
     }
 
-    public static func runSync(_ args: [String], in directory: String) throws -> Data {
+    public static func runSync(_ args: [String], in directory: String, allowedExitCodes: Set<Int32> = [0]) throws -> Data {
         let process = Process()
         process.executableURL = executable
         process.arguments = ["-C", directory, "--no-optional-locks"] + args
@@ -41,7 +41,7 @@ public enum Git {
         let data = out.fileHandleForReading.readDataToEndOfFile()
         group.wait()
         process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
+        guard allowedExitCodes.contains(process.terminationStatus) else {
             let msg = String(decoding: errData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
             throw GitError(code: process.terminationStatus, message: msg)
         }

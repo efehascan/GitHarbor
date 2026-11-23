@@ -101,6 +101,18 @@ public struct GitHubAPI: Sendable {
         return r.check_runs
     }
 
+    /// Kullanıcının depoları (sahip, ortak, kuruluş üyesi); son güncellenen önce.
+    public func repositories(page: Int = 1) async throws -> [GitHubRepository] {
+        try await get("/user/repos", query: ["per_page": "100", "page": "\(page)", "sort": "updated",
+                                             "affiliation": "owner,collaborator,organization_member"])
+    }
+
+    /// Kullanıcı hesabında yeni depo (boş; yerel depo gönderilecek).
+    public func createRepository(name: String, description: String, isPrivate: Bool) async throws -> GitHubRepository {
+        try await send("POST", "/user/repos", body: ["name": name, "description": description, "private": isPrivate,
+                                                     "auto_init": false])
+    }
+
     public func createPullRequest(_ repo: GitHubRepoID, title: String, body: String, head: String, base: String,
                                   draft: Bool) async throws -> PullRequest {
         try await send("POST", "/repos/\(repo.slug)/pulls",

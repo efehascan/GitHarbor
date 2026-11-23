@@ -116,6 +116,9 @@ public final class HistorySession {
     public func cherryPick(_ commit: CommitInfo) async { await perform { try await Git.cherryPick(commit.sha, in: self.repo.path) } }
     public func revert(_ commit: CommitInfo) async { await perform { try await Git.revert(commit, in: self.repo.path) } }
     public func checkout(_ commit: CommitInfo) async { await perform { try await Git.checkout(commit: commit.sha, in: self.repo.path) } }
+    public func undoLastCommit() async { await perform { try await Git.undoLastCommit(in: self.repo.path) } }
+    public func reset(to commit: CommitInfo) async { await perform { try await Git.resetKeepingChanges(to: commit.sha, in: self.repo.path) } }
+    public func isPushed(_ commit: CommitInfo) async -> Bool { await Git.isPushed(commit.sha, in: repo.path) }
 
     public func createTag(_ name: String, at commit: CommitInfo, message: String?) async {
         let n = name.trimmingCharacters(in: .whitespaces)

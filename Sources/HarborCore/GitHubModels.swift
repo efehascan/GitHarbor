@@ -104,3 +104,33 @@ public enum CheckSummary: Hashable, Sendable {
     case success(total: Int)
     case failure(failed: Int, total: Int)
 }
+
+/// GitHub'daki depo (klon listesi ve yayınlama).
+public struct GitHubRepository: Codable, Hashable, Identifiable, Sendable {
+    public var id: Int
+    public var fullName: String
+    public var name: String
+    public var isPrivate: Bool
+    public var description: String?
+    public var cloneURL: String
+    public var sshURL: String
+    public var htmlURL: String
+    public var updatedAt: Date?
+    enum CodingKeys: String, CodingKey {
+        case id, name, description
+        case fullName = "full_name", isPrivate = "private", cloneURL = "clone_url", sshURL = "ssh_url"
+        case htmlURL = "html_url", updatedAt = "updated_at"
+    }
+    public init(id: Int, fullName: String, name: String, isPrivate: Bool, description: String?, cloneURL: String,
+                sshURL: String, htmlURL: String, updatedAt: Date?) {
+        self.id = id
+        self.fullName = fullName
+        self.name = name
+        self.isPrivate = isPrivate
+        self.description = description
+        self.cloneURL = cloneURL
+        self.sshURL = sshURL
+        self.htmlURL = htmlURL
+        self.updatedAt = updatedAt
+    }
+}

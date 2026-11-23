@@ -103,7 +103,7 @@ struct ConnectCard: View {
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(Theme.accent.gradient)
             Text("GitHub'a bağlan").font(.title3.weight(.semibold))
-            Text("Pull request'leri ve CI durumunu görmek için. Token macOS Anahtar Zinciri'nde saklanır.")
+            Text("Depolarını klonlamak, pull request'leri ve CI durumunu görmek için. Token macOS Anahtar Zinciri'nde saklanır.")
                 .foregroundStyle(.secondary).multilineTextAlignment(.center).frame(maxWidth: 340)
             if account.cliAvailable {
                 Button { Task { await account.connectWithCLI() } } label: {

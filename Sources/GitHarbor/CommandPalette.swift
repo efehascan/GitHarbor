@@ -11,6 +11,9 @@ final class UIState {
     /// Palet ya da menüden gelen "yeni dal" isteği (dal panelini açar).
     var branchPanelRequest = 0
     var stashRequest = 0
+    /// Görsel test: `--sheet clone|create` ile açılır.
+    var sheet: RepoSheet? = CommandLine.arguments.contains("--sheet-clone") ? .clone
+        : CommandLine.arguments.contains("--sheet-create") ? .create : nil
 }
 
 enum RepoTab: String, CaseIterable {
@@ -136,6 +139,12 @@ struct CommandPalette: View {
                 })
             }
             list += [
+                Item(id: "editor", title: "\(Editors.preferredName)'da aç", subtitle: repo.name, icon: "chevron.left.forwardslash.chevron.right") {
+                    Editors.open(repo.path)
+                },
+                Item(id: "publish", title: "GitHub'a yayınla…", subtitle: repo.name, icon: "icloud.and.arrow.up") {
+                    ui.sheet = .publish(id)
+                },
                 Item(id: "finder", title: "Finder'da göster", subtitle: repo.name, icon: "folder") {
                     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: repo.path)])
                 },
@@ -150,6 +159,10 @@ struct CommandPalette: View {
             Item(id: "fetch-all", title: "Bütün depoları getir", subtitle: "\(store.workspace.repos.count) depo",
                  icon: "arrow.triangle.2.circlepath.circle") { store.fetchAll() },
             Item(id: "add", title: "Depo ekle…", subtitle: "", icon: "plus") { AddRepository.present(store: store) },
+            Item(id: "clone", title: "Depo klonla…", subtitle: "GitHub'dakilerim ya da adres", icon: "square.and.arrow.down.on.square") {
+                ui.sheet = .clone
+            },
+            Item(id: "create", title: "Yeni depo…", subtitle: "", icon: "plus.rectangle.on.folder") { ui.sheet = .create },
             Item(id: "folder", title: "Yeni klasör", subtitle: "", icon: "folder.badge.plus") {
                 store.edit { $0.createFolder(named: "Yeni klasör") }
             },

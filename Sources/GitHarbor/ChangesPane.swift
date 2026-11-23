@@ -86,6 +86,13 @@ struct ChangesPane: View {
                 Button("Commit'e Ekle") { Task { await session.stage([change]) } }
                 Button("Değişiklikleri Geri Al…", role: .destructive) { confirmDiscard = [change] }
             }
+            if change.kind == .untracked || !change.staged {
+                Divider()
+                Button("Yok Say: \(change.path)") { Task { await session.ignore(change.path) } }
+                if let ext = RepoHelpers.extensionPattern(for: change.path) {
+                    Button("Yok Say: bütün \(ext) dosyaları") { Task { await session.ignore(ext) } }
+                }
+            }
             Divider()
             Button("Finder'da Göster") {
                 NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: session.repo.path).appendingPathComponent(change.path)])
@@ -144,6 +151,7 @@ private struct ChangeRow: View {
 private struct CommitBox: View {
     @Bindable var session: ChangesSession
     @FocusState private var summaryFocused: Bool
+    @State private var showCoAuthors = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -176,7 +184,19 @@ private struct CommitBox: View {
                             .padding(.horizontal, 11).padding(.vertical, 6).allowsHitTesting(false)
                     }
                 }
+            if showCoAuthors {
+                TextField("Ortak yazar: Ad <e-posta>, …", text: $session.coAuthors)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11.5))
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(.background.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
+            }
             HStack {
+                Button { showCoAuthors.toggle() } label: {
+                    Image(systemName: showCoAuthors ? "person.2.fill" : "person.badge.plus")
+                }
+                .buttonStyle(.borderless)
+                .help("Ortak yazar ekle (Co-authored-by)")
                 Toggle("Son commit'i düzelt", isOn: $session.amend)
                     .toggleStyle(.checkbox)
                     .font(.system(size: 11.5))

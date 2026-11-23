@@ -8,6 +8,8 @@ struct HistoryView: View {
     @State private var branchTarget: CommitInfo?
     @State private var nameDraft = ""
     @State private var confirmRevert: CommitInfo?
+    @State private var confirmReset: CommitInfo?
+    @State private var resetPushed = false
 
     var body: some View {
         HSplitView {
@@ -30,6 +32,14 @@ struct HistoryView: View {
             }
             Button("Vazgeç", role: .cancel) {}
         } message: { Text(branchTarget.map { "\($0.shortSHA) · \($0.subject)" } ?? "") }
+        .confirmationDialog("Dal bu commit'e döndürülsün mü?", isPresented: Binding(get: { confirmReset != nil },
+                                                                                   set: { if !$0 { confirmReset = nil } })) {
+            Button("Döndür, değişiklikler kalsın", role: .destructive) { if let c = confirmReset { Task { await session.reset(to: c) } } }
+        } message: {
+            Text(resetPushed
+                 ? "Sonraki commit'ler GitHub'a gönderilmiş. Döndürürsen gönderirken zorla göndermen (force push) gerekir; ekip arkadaşlarının işi bozulabilir. Değişiklikler silinmez, çalışma klasöründe kalır."
+                 : "Sonraki commit'ler kaldırılır; değişiklikleri silinmez, çalışma klasöründe kalır.")
+        }
         .confirmationDialog("Bu commit geri alınsın mı?", isPresented: Binding(get: { confirmRevert != nil },
                                                                              set: { if !$0 { confirmRevert = nil } })) {
             Button("Geri alan commit oluştur") { if let c = confirmRevert { Task { await session.revert(c) } } }
@@ -74,6 +84,15 @@ struct HistoryView: View {
         Button("Geri Al (revert)…") { confirmRevert = commit }
         Divider()
         Button("Bu Commit'e Geç (ayrık HEAD)") { Task { await session.checkout(commit) } }
+        if commit.sha == session.commits.first?.sha, commit.parents.count == 1 {
+            Button("Son Commit'i Geri Al") { Task { await session.undoLastCommit() } }
+                .help("Commit kaldırılır, değişiklikler commit'e hazır olarak kalır")
+        }
+        if commit.sha != session.commits.first?.sha {
+            Button("Dalı Bu Commit'e Döndür…") {
+                Task { resetPushed = await session.isPushed(session.commits.first ?? commit); confirmReset = commit }
+            }
+        }
         ForEach(session.tags(for: commit.sha), id: \.self) { tag in
             Divider()
             Button("\"\(tag)\" etiketini gönder") { Task { await session.pushTag(tag) } }

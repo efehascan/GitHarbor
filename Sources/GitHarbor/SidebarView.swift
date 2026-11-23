@@ -100,6 +100,7 @@ struct SidebarView: View {
             }
         }
         Divider()
+        Button("\(Editors.preferredName)'da Aç") { Editors.open(repo.path) }
         Button("Finder'da Göster") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: repo.path)]) }
         Button("Terminalde Aç") {
             NSWorkspace.shared.open([URL(fileURLWithPath: repo.path)],

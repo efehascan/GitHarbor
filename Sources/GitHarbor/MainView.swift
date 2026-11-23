@@ -37,16 +37,27 @@ struct MainView: View {
         .task {
             if CommandLine.arguments.contains("--settings") { openSettings() }   // görsel test
         }
+        .sheet(item: Binding(get: { ui.sheet }, set: { ui.sheet = $0 })) { sheet in
+            switch sheet {
+            case .clone: CloneSheet(store: store)
+            case .create: CreateRepoSheet(store: store)
+            case .publish(let id): PublishSheet(store: store, repoID: id)
+            }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button { store.edit { $0.createFolder(named: "Yeni klasör") } } label: {
                     Label("Yeni Klasör", systemImage: "folder.badge.plus")
                 }
                 .help("Yeni klasör (⇧⌘N)")
-                Button { AddRepository.present(store: store) } label: {
-                    Label("Depo Ekle", systemImage: "plus")
+                Menu {
+                    Button("Var olan depoyu ekle…") { AddRepository.present(store: store) }
+                    Button("Depo klonla…") { ui.sheet = .clone }
+                    Button("Yeni depo…") { ui.sheet = .create }
+                } label: {
+                    Label("Depo", systemImage: "plus")
                 }
-                .help("Depo ekle (⌘O)")
+                .help("Depo ekle, klonla ya da oluştur")
             }
         }
     }

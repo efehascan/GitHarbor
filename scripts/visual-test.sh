@@ -35,3 +35,5 @@ shot conflict-dark 5 --select Catisma --appearance dark
 shot publish-light 5 --select Yeni-dal --appearance light
 shot settings-light 5 --appearance light --settings
 shot empty-dark 4 --appearance dark
+shot clone-dark 6 --appearance dark --sheet-clone
+shot create-light 5 --appearance light --sheet-create

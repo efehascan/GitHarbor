@@ -6,6 +6,7 @@ struct SyncButton: View {
     let store: HarborStore
     let id: UUID
     let status: RepoStatus
+    @Environment(UIState.self) private var ui
 
     private var state: RepoSyncState { store.sync[id] ?? RepoSyncState() }
 
@@ -67,7 +68,14 @@ struct SyncButton: View {
         switch action {
         case .fetch: await store.fetch(id)
         case .pull: await store.pull(id, mode: .merge)
-        case .push, .publish: await store.push(id)
+        case .push: await store.push(id)
+        case .publish:
+            // Uzağı olmayan depo: önce GitHub'da oluştur.
+            if let repo = store.workspace.repo(id), await Git.remotes(in: repo.path).isEmpty {
+                ui.sheet = .publish(id)
+            } else {
+                await store.push(id)
+            }
         }
     }
 
@@ -172,6 +180,13 @@ struct SettingsView: View {
                 Toggle("Düşük güç modunda duraklat", isOn: binding(\.pauseOnLowPower))
                 Toggle("Otomatik çekince ve dikkat gerektiğinde bildir", isOn: binding(\.notify))
             }
+            Section("Git kimliği ve editör") {
+                IdentityEditor()
+                Picker("Kod editörü", selection: Binding(get: { Editors.preferred }, set: { Editors.preferred = $0 })) {
+                    ForEach(Editors.installed, id: \.bundle) { Text($0.name).tag($0.bundle) }
+                }
+                .disabled(Editors.installed.isEmpty)
+            }
             Section("GitHub") {
                 if let user = store.github.user {
                     LabeledContent("Hesap", value: user.login)
@@ -191,5 +206,33 @@ struct SettingsView: View {
 
     private func binding<T>(_ path: WritableKeyPath<SyncSettings, T>) -> Binding<T> {
         Binding(get: { store.settings[keyPath: path] }, set: { v in store.updateSettings { $0[keyPath: path] = v } })
+    }
+}
+
+/// Genel git kimliği (user.name, user.email).
+private struct IdentityEditor: View {
+    @State private var name = ""
+    @State private var email = ""
+    @State private var saved = ""
+
+    var body: some View {
+        TextField("Ad", text: $name)
+        TextField("E-posta", text: $email)
+        HStack {
+            Text(saved).font(.caption).foregroundStyle(.secondary)
+            Spacer()
+            Button("Kaydet") {
+                Task {
+                    do { try await Git.setIdentity(name: name, email: email); saved = "Kaydedildi" }
+                    catch { saved = "\(error)" }
+                }
+            }
+            .disabled(name.isEmpty || email.isEmpty)
+        }
+        .task {
+            let id = await Git.identity()
+            name = id.name
+            email = id.email
+        }
     }
 }

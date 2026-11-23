@@ -39,6 +39,10 @@ struct GitHarborApp: App {
             CommandGroup(after: .newItem) {
                 Button("Depo Ekle…") { AddRepository.present(store: store) }
                     .keyboardShortcut("o")
+                Button("Depo Klonla…") { ui.sheet = .clone }
+                    .keyboardShortcut("o", modifiers: [.command, .shift])
+                Button("Yeni Depo…") { ui.sheet = .create }
+                    .keyboardShortcut("n")
                 Button("Yeni Klasör") { store.edit { $0.createFolder(named: "Yeni klasör") } }
                     .keyboardShortcut("n", modifiers: [.command, .shift])
             }

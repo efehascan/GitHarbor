@@ -16,6 +16,8 @@ public final class ChangesSession {
 
     public var summary = ""
     public var details = ""
+    /// "Ad <e-posta>, Ad2 <e-posta2>" — commit'e Co-authored-by satırları olarak eklenir.
+    public var coAuthors = ""
     public var amend = false {
         didSet { if amend != oldValue { Task { await amendChanged() } } }
     }
@@ -159,12 +161,14 @@ public final class ChangesSession {
     public func commit() async {
         guard canCommit else { return }
         let body = details.trimmingCharacters(in: .whitespacesAndNewlines)
-        let message = summary.trimmingCharacters(in: .whitespacesAndNewlines) + (body.isEmpty ? "" : "\n\n" + body)
+        let plain = summary.trimmingCharacters(in: .whitespacesAndNewlines) + (body.isEmpty ? "" : "\n\n" + body)
+        let message = RepoHelpers.withCoAuthors(plain, ChangesSession.parsePeople(coAuthors))
         let amending = amend
         let ok = await perform { try await Git.commit(message: message, amend: amending, in: self.repo.path) }
         if ok {
             summary = ""
             details = ""
+            coAuthors = ""
             amend = false
         }
     }
@@ -182,6 +186,21 @@ public final class ChangesSession {
     public func drop(_ entry: StashEntry) async {
         await perform { try await Git.stashDrop(entry.ref, in: self.repo.path) }
         await loadStashes()
+    }
+
+    /// "Ad <e-posta>" listesi (virgül ya da satır sonuyla ayrılmış); biçimi bozuk olan atlanır.
+    public nonisolated static func parsePeople(_ text: String) -> [(name: String, email: String)] {
+        text.split(whereSeparator: { $0 == "," || $0 == "\n" }).compactMap { part in
+            let s = part.trimmingCharacters(in: .whitespaces)
+            guard let lt = s.firstIndex(of: "<"), let gt = s.lastIndex(of: ">"), lt < gt else { return nil }
+            let name = s[..<lt].trimmingCharacters(in: .whitespaces)
+            let email = s[s.index(after: lt)..<gt].trimmingCharacters(in: .whitespaces)
+            return name.isEmpty || email.isEmpty ? nil : (name, email)
+        }
+    }
+
+    public func ignore(_ pattern: String) async {
+        await perform { try await Git.ignore(pattern, in: self.repo.path) }
     }
 
     // MARK: - Çakışma

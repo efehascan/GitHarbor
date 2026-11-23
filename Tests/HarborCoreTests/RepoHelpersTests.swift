@@ -42,3 +42,12 @@ final class RepoHelpersTests: XCTestCase {
         XCTAssertEqual(RepoHelpers.withCoAuthors("Özet", [(name: "", email: "e@x.com"), (name: "Ad", email: " ")]), "Özet")
     }
 }
+
+final class CoAuthorParsingTests: XCTestCase {
+    func testParsePeople() {
+        let p = ChangesSession.parsePeople("Ali Veli <ali@x.com>, bozuk, <e@x.com>\nAyşe Yılmaz <a@y.com>")
+        XCTAssertEqual(p.map(\.name), ["Ali Veli", "Ayşe Yılmaz"])
+        XCTAssertEqual(p.map(\.email), ["ali@x.com", "a@y.com"])
+        XCTAssertTrue(ChangesSession.parsePeople("").isEmpty)
+    }
+}

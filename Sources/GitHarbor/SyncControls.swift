@@ -159,58 +159,8 @@ struct SyncBanner: View {
     }
 }
 
-/// Ayarlar penceresi (⌘,).
-struct SettingsView: View {
-    let store: HarborStore
-
-    var body: some View {
-        Form {
-            Section("Otomatik senkron") {
-                Toggle("Uzak depoları otomatik getir (fetch)", isOn: binding(\.autoFetch))
-                Picker("Sıklık", selection: binding(\.interval)) {
-                    ForEach([60.0, 300, 900, 1800, 3600], id: \.self) { s in
-                        Text(AutoSyncPolicy.intervalLabel(s)).tag(s)
-                    }
-                }
-                .disabled(!store.settings.autoFetch)
-                Toggle("Güvenliyse otomatik çek (pull)", isOn: binding(\.autoPull))
-                    .disabled(!store.settings.autoFetch)
-                Text("Yalnızca çalışma klasörü temizken ve yerel commit yokken ileri sarılır; aksi halde depoda uyarı gösterilir. Senin işin hiçbir zaman değiştirilmez.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Toggle("Düşük güç modunda duraklat", isOn: binding(\.pauseOnLowPower))
-                Toggle("Otomatik çekince ve dikkat gerektiğinde bildir", isOn: binding(\.notify))
-            }
-            Section("Git kimliği ve editör") {
-                IdentityEditor()
-                Picker("Kod editörü", selection: Binding(get: { Editors.preferred }, set: { Editors.preferred = $0 })) {
-                    ForEach(Editors.installed, id: \.bundle) { Text($0.name).tag($0.bundle) }
-                }
-                .disabled(Editors.installed.isEmpty)
-            }
-            Section("GitHub") {
-                if let user = store.github.user {
-                    LabeledContent("Hesap", value: user.login)
-                    Button("Çıkış yap", role: .destructive) { store.github.signOut() }
-                } else if store.github.isConnected {
-                    LabeledContent("Hesap", value: "bağlı (doğrulanıyor)")
-                    Button("Çıkış yap", role: .destructive) { store.github.signOut() }
-                } else {
-                    ConnectCard(account: store.github).frame(height: 300)
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .frame(width: 460)
-        .padding(.vertical, 8)
-    }
-
-    private func binding<T>(_ path: WritableKeyPath<SyncSettings, T>) -> Binding<T> {
-        Binding(get: { store.settings[keyPath: path] }, set: { v in store.updateSettings { $0[keyPath: path] = v } })
-    }
-}
-
 /// Genel git kimliği (user.name, user.email).
-private struct IdentityEditor: View {
+struct IdentityEditor: View {
     @State private var name = ""
     @State private var email = ""
     @State private var saved = ""

@@ -33,7 +33,10 @@ shot palette-dark 5 --select Liman --appearance dark --palette
 shot attention-light 8 --select Kirli --appearance light
 shot conflict-dark 5 --select Catisma --appearance dark
 shot publish-light 5 --select Yeni-dal --appearance light
-shot settings-light 5 --appearance light --settings
+shot settings-light 5 --appearance light --settings-tab genel --settings
+shot settings-notify-dark 5 --appearance dark --settings-tab bildirim --settings
+shot settings-github-light 5 --appearance light --settings-tab github --settings
+shot settings-sync-dark 5 --appearance dark --settings-tab senkron --settings
 shot empty-dark 4 --appearance dark
 shot clone-dark 6 --appearance dark --sheet-clone
 shot create-light 5 --appearance light --sheet-create

@@ -7,6 +7,11 @@ struct GitHarborApp: App {
     @State private var store = HarborStore(fileURL: Snapshot.workspaceURL ?? HarborStore.defaultFileURL)
     @State private var ui = UIState()
 
+    init() {
+        // Görsel test: ayarlar hangi sekmeyle açılsın.
+        if let tab = value(of: "--settings-tab") { UserDefaults.standard.set(tab, forKey: "settingsTab") }
+    }
+
     var body: some Scene {
         Window("Git Harbor Desktop", id: "main") {
             MainView(store: store)
@@ -14,6 +19,7 @@ struct GitHarborApp: App {
                 .frame(minWidth: 860, minHeight: 520)
                 .task {
                     await Snapshot.runAPISmokeIfRequested()
+                    if value(of: "--appearance") == nil { AppTheme.current.apply() }   // kayıtlı tema
                     Snapshot.applyTestOptions(store: store)
                     if Snapshot.outputPath == nil {
                         store.onEvent = { Notifier.post($0) }
@@ -76,4 +82,11 @@ enum AddRepository {
         let urls = panel.urls
         Task { await store.addRepositories(at: urls, into: folder) }
     }
+}
+
+/// Komut satırında bir bayrağın değeri (görsel test seçenekleri için).
+func value(of flag: String) -> String? {
+    let args = CommandLine.arguments
+    guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
+    return args[i + 1]
 }

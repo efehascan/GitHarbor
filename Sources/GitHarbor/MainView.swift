@@ -58,6 +58,10 @@ struct MainView: View {
                     Label("Depo", systemImage: "plus")
                 }
                 .help("Depo ekle, klonla ya da oluştur")
+                Button { openSettings() } label: {
+                    Label("Ayarlar", systemImage: "gearshape")
+                }
+                .help("Ayarlar: tema, bildirimler, senkron, GitHub (⌘,)")
             }
         }
     }

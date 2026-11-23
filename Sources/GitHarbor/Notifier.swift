@@ -6,6 +6,11 @@ import UserNotifications
 enum Notifier {
     private static var asked = false
 
+    /// Ayarlardaki "Deneme bildirimi".
+    static func test() {
+        post(.pulled(repo: "Git Harbor Desktop", commits: 1, branch: "main"))
+    }
+
     static func post(_ event: SyncEvent) {
         // Paketlenmemiş çalıştırmada (swift run, testler) bildirim merkezi uygulamayı düşürür.
         guard Bundle.main.bundleIdentifier != nil else { return }

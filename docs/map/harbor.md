@@ -49,3 +49,9 @@ Her depo ya tam bir klasörde ya da `ungrouped` içindedir. Depo adı verilmezse
 - `score`: ikisi de `lowercased(with: Locale(identifier: "tr"))` ile küçültülür, sonra `folding(options: .diacriticInsensitive, locale: nil)` uygulanmaz (ç, ş korunur). Sorgu boşsa 0. Sorgunun her karakteri adayda soldan sağa açgözlü aranır; bulunamazsa nil.
 - Puan: her eşleşen karakter +1; aday başındaysa +8; kelime başındaysa (önceki karakter boşluk, `-`, `_`, `/`, `.` ya da küçük harften sonra büyük harf — büyük/küçük kontrolü özgün adayda) +5; bir önceki eşleşmenin hemen ardındaysa +6 (bitişik eşleşme dağınık kelime başlarından iyi olsun); eşleşmeler arası atlanan karakter başına −1 (ilk eşleşmeden önceki karakterler sayılmaz).
 - `rank`: (puan, öğe, özgün indeks) üçlüleri; nil olanlar atılır; puana göre azalan, eşitse anahtar uzunluğu artan, o da eşitse özgün indeks artan.
+
+## Depo yardımcıları (RepoHelpers)
+- `cloneFolderName`: kırp; sondaki "/" karakterlerini at; son yol parçasını al (hem "/" hem ":" ayırıcı sayılır: `git@host:o/r`); sondaki ".git"i at; sonuç boşsa ya da adres yalnızca sunucudan oluşuyorsa (ör. "https://github.com/") nil.
+- `addIgnore`: desen kırpılır, boşsa içerik aynen döner. İçeriğin satırlarından biri kırpılmış hâliyle desene eşitse içerik aynen döner. Değilse: içerik boş değil ve "\n" ile bitmiyorsa "\n" eklenir, sonra desen + "\n".
+- `extensionPattern`: yolun son parçası; "." ile başlıyorsa nil; son "." yoksa nil; varsa "*." + son noktadan sonrası.
+- `withCoAuthors`: geçerli kişiler (ad ve e-posta kırpılmış hâliyle boş değil). Satır "Co-authored-by: Ad <e-posta>". Mesajda zaten olan satırlar atlanır. Eklenecek yoksa mesaj aynen. Varsa: mesajın sonundaki boşluk/satır sonları atılır, "\n\n" + satırlar "\n" ile birleşik. Mesaj zaten bir Co-authored-by satırıyla bitiyorsa araya "\n\n" değil "\n" konur.

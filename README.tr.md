@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/icon.png" width="128" alt="Git Harbor Desktop ikonu"></p>
+
 # Git Harbor Desktop
 
 macOS için hızlı ve yerel bir git istemcisi. Masaüstü git uygulamasından beklediğin her şey, üstüne **otomatik fetch ve güvenli otomatik pull** ve bütün depolarını tek kenar çubuğunda düzenleyen **adlandırılmış klasörler**.
@@ -11,13 +13,17 @@ macOS için hızlı ve yerel bir git istemcisi. Masaüstü git uygulamasından b
 ## Özellikler
 
 - **Klasörler:** depoları adlandırdığın klasörlerde topla; sürükle-bırakla taşı ya da sırala; Finder'dan klasör bırakarak ekle.
-- **Otomatik senkron:** her depo arka planda fetch edilir (varsayılan 5 dk, aynı anda en çok 4). **Yalnızca güvenliyse** otomatik pull: temiz klasör ve gönderilmemiş commit yok, yalnızca ileri sarma. Değilse depo neden çekilmediğini gösterir. Düşük güç modunda durur. İsteğe bağlı bildirim.
+- **Otomatik senkron:** her depo arka planda fetch edilir (varsayılan 5 dk, aynı anda en çok 4). **Yalnızca güvenliyse** otomatik pull: temiz klasör ve gönderilmemiş commit yok, yalnızca ileri sarma. Değilse depo neden çekilmediğini gösterir. Düşük güç modunda durur. İsteğe bağlı bildirim (deponun logosuyla).
 - **Değişiklikler:** fark görünümü; dosyayı ya da **seçili satırları** commit'e ekle/çıkar; geri al (yeni dosyalar Çöp Sepeti'ne); özet ve açıklamayla commit, amend, ortak yazar; stash (sakla, uygula, geri getir, sil); dosyayı ya da uzantıyı yok say.
 - **Senkron:** fetch, pull (merge ya da rebase), push, dal yayınlama; sıradaki işi gösteren tek düğme (Çek 3, Gönder 2…).
 - **Çakışmalar:** merge/rebase/cherry-pick sırasında şerit; benimkini/onlarınkini kullan, editörde aç, çözüldü işaretle, iptal ya da bitir.
 - **Geçmiş ve dallar:** sayfalı commit listesi, commit ayrıntısı ve farkı; dal oluştur/geç/yeniden adlandır/sil; merge, rebase, cherry-pick, revert, etiketler; son commit'i geri al; bir commit'e dön (değişiklikler kalır).
 - **Depolar:** var olanı ekle, klonla (GitHub hesabından ya da adresten), yeni oluştur (README, .gitignore, lisans), GitHub'a yayınla.
+- **Çoklu klon:** GitHub hesabından birden çok depo seç ya da her satıra bir adres yapıştır; aynı anda en çok 3 depo klonlanır, biten hemen eklenir. Başarısız olanlar yeniden denemek için seçili kalır.
+- **Çalışma ağaçları (worktree):** başka bir dalı kendi klasöründe aç (var olan, yeni ya da `origin/x`'i izleyen); ana deponun yanına, kenar çubuğuna ekle; kaldır (asla zorlamaz: kaydedilmemiş değişiklik varsa kaldırılmaz, dal kalır); silinmiş klasörlerin kayıtlarını temizle.
+- **Depo logoları:** kenar çubuğunda her deponun kendi ikonu (uygulama ikonu, `AppIcon.appiconset`, depodaki logo ya da favicon); yoksa GitHub sahibinin avatarı.
 - **GitHub:** GitHub CLI oturumuyla ya da token'la giriş (Anahtar Zinciri'nde); CI durumlu pull request'ler, kontrol ayrıntıları, yerelde aç, PR oluştur; `#123` bağlantıları.
+- **Ayarlar (⌘,):** tema (sistem, açık, koyu), editör, senkron aralığı ve otomatik pull, deneme düğmeli bildirimler, GitHub hesabı, git kimliği.
 - **⌘K komut paleti,** menü çubuğu durumu, editörde (VS Code, Cursor, Xcode, Zed, Sublime) ya da Terminal'de aç.
 - Boştayken ~%0 CPU, ~50 MB bellek. Yoklama yok: dosya değişiklikleri FSEvents ile izlenir. Dış bağımlılık yok; sistemdeki `git` kullanılır.
 
@@ -50,7 +56,7 @@ swift run GitHarbor                       # debug çalıştır
 scripts/check.sh                          # derleme + testler (kısa çıktı)
 scripts/check.sh StatusParserTests        # tek test grubu
 scripts/make-fixtures.sh /tmp/fx          # gerçek uzaklı 5 depo (geride, kirli, çakışmada, yayınlanmamış, zengin)
-scripts/visual-test.sh /tmp/shots         # 13 senaryonun gerçek pencere görüntüsü, açık ve koyu
+scripts/visual-test.sh /tmp/shots         # 17 senaryonun gerçek pencere görüntüsü, açık ve koyu
 ```
 
 - `Sources/HarborCore/`: modeller, git işlemleri, ayrıştırıcılar, senkron politikası, GitHub API (arayüzsüz, gerçek depolarla test edilir).

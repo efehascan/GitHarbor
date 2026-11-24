@@ -34,12 +34,15 @@ private let defaultParent = NSHomeDirectory() + "/Documents/GitHub"
 struct CloneSheet: View {
     let store: HarborStore
     @Environment(\.dismiss) private var dismiss
-    @State private var tab = 0
-    @State private var url = ""
+    // Görsel test: `--clone-urls a,b` adres sekmesini doldurur.
+    @State private var tab = value(of: "--clone-urls") == nil ? 0 : 1
+    @State private var url = value(of: "--clone-urls")?.replacingOccurrences(of: ",", with: "\n") ?? ""
     @State private var parent = defaultParent
     @State private var repos: [GitHubRepository] = []
     @State private var filter = ""
-    @State private var picked: GitHubRepository.ID?
+    @State private var picked: Set<GitHubRepository.ID> = []
+    /// Her kaynak için durum: nil bekliyor, "" bitti, metin hata.
+    @State private var progress: [String: String?] = [:]
     @State private var loading = false
     @State private var working = false
     @State private var error: String?
@@ -83,26 +86,34 @@ struct CloneSheet: View {
                     ConnectCard(account: store.github).frame(height: 300)
                 }
             } else {
-                TextField("https://github.com/kullanıcı/depo.git ya da git@…", text: $url)
-                    .textFieldStyle(.roundedBorder)
+                Text("Her satıra bir adres").font(.caption).foregroundStyle(.secondary)
+                TextEditor(text: $url)
+                    .font(.system(size: 12, design: .monospaced))
+                    .frame(height: 110)
+                    .scrollContentBackground(.hidden)
+                    .padding(6)
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
             }
 
             HStack {
                 Text("Klasör:").foregroundStyle(.secondary)
-                Text(abbreviate(parent) + "/" + (targetName ?? "…")).lineLimit(1).truncationMode(.middle)
+                Text(abbreviate(parent) + "/" + targetLabel).lineLimit(1).truncationMode(.middle)
                 Spacer()
                 Button("Değiştir…") { if let p = chooseFolder("Klonun konacağı klasör", initial: parent) { parent = p } }
             }
             .font(.system(size: 12))
             if let error { Text(error).font(.caption).foregroundStyle(.orange) }
             HStack {
-                if working { ProgressView().controlSize(.small); Text("Klonlanıyor…").foregroundStyle(.secondary) }
+                if working {
+                    ProgressView().controlSize(.small)
+                    Text("Klonlanıyor… \(finished)/\(sources.count)").foregroundStyle(.secondary)
+                }
                 Spacer()
                 Button("Vazgeç", role: .cancel) { dismiss() }
-                Button("Klonla") { Task { await clone() } }
+                Button(sources.count > 1 ? "\(sources.count) depoyu klonla" : "Klonla") { Task { await clone() } }
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.defaultAction)
-                    .disabled(source == nil || working)
+                    .disabled(sources.isEmpty || working)
             }
         }
         .padding(20)
@@ -113,12 +124,26 @@ struct CloneSheet: View {
         filter.isEmpty ? repos : FuzzyMatch.rank(filter, repos, key: { $0.fullName })
     }
 
-    private var source: String? {
-        if tab == 1 { return url.trimmingCharacters(in: .whitespaces).isEmpty ? nil : url }
-        return repos.first { $0.id == picked }?.cloneURL
+    /// Klonlanacak adresler (liste seçimi ya da satır satır adres).
+    private var sources: [String] {
+        if tab == 1 {
+            var seen = Set<String>()
+            return url.split(whereSeparator: \.isNewline)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty && seen.insert($0).inserted }
+        }
+        return repos.filter { picked.contains($0.id) }.map(\.cloneURL)
     }
 
-    private var targetName: String? { source.flatMap(RepoHelpers.cloneFolderName) }
+    private var targetLabel: String {
+        switch sources.count {
+        case 0: "…"
+        case 1: RepoHelpers.cloneFolderName(sources[0]) ?? "…"
+        default: "(\(sources.count) depo)"
+        }
+    }
+
+    private var finished: Int { progress.values.filter { $0 != nil }.count }
 
     private func load() async {
         guard repos.isEmpty, let api = store.github.api else { return }
@@ -137,17 +162,49 @@ struct CloneSheet: View {
         }
     }
 
+    /// Seçilenleri en fazla 3'ü aynı anda olacak şekilde klonlar; bitenler hemen eklenir.
+    /// Hata olursa pencere açık kalır, hatalı olanlar listelenir.
     private func clone() async {
-        guard let source else { return }
+        let list = sources
+        guard !list.isEmpty else { return }
         working = true
         error = nil
-        defer { working = false }
-        do {
-            let path = try await Git.clone(source, into: parent)
-            await store.addRepositories(at: [URL(fileURLWithPath: path)])
+        progress = Dictionary(uniqueKeysWithValues: list.map { ($0, String?.none) })
+        let target = parent
+        await withTaskGroup(of: (String, String?).self) { group in
+            var next = 0
+            func start() {
+                guard next < list.count else { return }
+                let src = list[next]
+                next += 1
+                group.addTask {
+                    do {
+                        let path = try await Git.clone(src, into: target)
+                        await store.addRepositories(at: [URL(fileURLWithPath: path)])
+                        return (src, nil)
+                    } catch {
+                        return (src, "\(error)")
+                    }
+                }
+            }
+            for _ in 0..<min(3, list.count) { start() }
+            for await (src, failure) in group {
+                progress[src] = .some(failure ?? "")
+                start()
+            }
+        }
+        working = false
+        let failures = list.compactMap { src -> String? in
+            guard case let .some(.some(msg)) = progress[src], !msg.isEmpty else { return nil }
+            return "\(RepoHelpers.cloneFolderName(src) ?? src): \(msg)"
+        }
+        if failures.isEmpty {
             dismiss()
-        } catch {
-            self.error = "\(error)"
+        } else {
+            error = failures.joined(separator: "\n")
+            // Yalnızca başarısız olanlar seçili kalsın (yeniden denemek için).
+            let failed = Set(list.filter { if case let .some(.some(m)) = progress[$0] { !m.isEmpty } else { false } })
+            picked = picked.filter { id in repos.first { $0.id == id }.map { failed.contains($0.cloneURL) } ?? false }
         }
     }
 }

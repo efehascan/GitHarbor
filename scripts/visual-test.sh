@@ -37,6 +37,7 @@ shot settings-light 5 --appearance light --settings-tab genel --settings
 shot settings-notify-dark 5 --appearance dark --settings-tab bildirim --settings
 shot settings-github-light 5 --appearance light --settings-tab github --settings
 shot settings-sync-dark 5 --appearance dark --settings-tab senkron --settings
+shot worktrees-dark 6 --select Liman --appearance dark --worktrees
 shot empty-dark 4 --appearance dark
 shot clone-dark 6 --appearance dark --sheet-clone
 shot create-light 5 --appearance light --sheet-create

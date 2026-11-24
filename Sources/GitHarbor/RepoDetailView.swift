@@ -107,6 +107,7 @@ struct RepoDetailView: View {
             Spacer(minLength: 12)
             if let status {
                 BranchButton(session: history, status: status, request: ui.branchPanelRequest)
+                WorktreeButton(store: store, repo: repo, request: ui.worktreeRequest)
                 StashButton(session: session, request: ui.stashRequest)
                 SyncButton(store: store, id: repo.id, status: status)
             }

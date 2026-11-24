@@ -11,6 +11,7 @@ final class UIState {
     /// Palet ya da menüden gelen "yeni dal" isteği (dal panelini açar).
     var branchPanelRequest = 0
     var stashRequest = 0
+    var worktreeRequest = CommandLine.arguments.contains("--worktrees") ? 1 : 0
     /// Görsel test: `--sheet clone|create` ile açılır.
     var sheet: RepoSheet? = CommandLine.arguments.contains("--sheet-clone") ? .clone
         : CommandLine.arguments.contains("--sheet-create") ? .create : nil
@@ -128,6 +129,9 @@ struct CommandPalette: View {
                 },
                 Item(id: "branch", title: "Yeni dal…", subtitle: repo.name, icon: "arrow.triangle.branch") {
                     ui.branchPanelRequest += 1
+                },
+                Item(id: "worktree", title: "Çalışma ağacı (worktree)…", subtitle: repo.name, icon: "square.stack.3d.up") {
+                    ui.worktreeRequest += 1
                 },
                 Item(id: "stash", title: "Değişiklikleri sakla (stash)…", subtitle: repo.name, icon: "tray.and.arrow.down") {
                     ui.stashRequest += 1

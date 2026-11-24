@@ -22,7 +22,14 @@ struct GitHarborApp: App {
                     if value(of: "--appearance") == nil { AppTheme.current.apply() }   // kayıtlı tema
                     Snapshot.applyTestOptions(store: store)
                     if Snapshot.outputPath == nil {
-                        store.onEvent = { Notifier.post($0) }
+                        store.onEvent = { [store] event in
+                            let name: String
+                            switch event {
+                            case .pulled(let repo, _, _), .attention(let repo, _): name = repo
+                            }
+                            let id = store.workspace.repos.first { $0.name == name }?.id
+                            Notifier.post(event, logo: id.flatMap { RepoLogos.shared.pngURL(for: $0) })
+                        }
                     }
                     store.start()
                     Snapshot.runIfRequested(store: store)

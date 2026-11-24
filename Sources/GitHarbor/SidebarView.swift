@@ -167,12 +167,26 @@ private struct RepoRow: View {
     @Binding var draft: String
     let commit: () -> Void
 
-    var body: some View {
-        HStack(spacing: 8) {
+    @ViewBuilder private var logo: some View {
+        if error == nil, let image = RepoLogos.shared.images[repo.id] {
+            Image(nsImage: image)
+                .resizable()
+                .interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 18, height: 18)
+                .clipShape(RoundedRectangle(cornerRadius: 4.5))
+        } else {
             Image(systemName: error == nil ? "shippingbox.fill" : "exclamationmark.triangle.fill")
                 .font(.system(size: 12))
                 .foregroundStyle(error == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.orange))
-                .frame(width: 16)
+                .frame(width: 18)
+                .onAppear { RepoLogos.shared.load(repo) }
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            logo
             VStack(alignment: .leading, spacing: 1) {
                 if renaming {
                     TextField("Ad", text: $draft)

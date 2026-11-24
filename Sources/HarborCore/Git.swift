@@ -33,15 +33,17 @@ public enum Git {
         process.standardInput = FileHandle.nullDevice
         try process.run()
         // Çıktı büyükse borunun dolup süreci kilitlememesi için iki ucu da süreç bitmeden okunur.
+        // stderr kendi iş parçacığında okunur: GCD havuzu bekleyen çağrılarla dolarsa okuyucu hiç
+        // başlamaz ve çağrı sonsuza kadar kilitlenir (çok sayıda paralel git çağrısında yaşandı).
         var errData = Data()
-        let group = DispatchGroup()
-        group.enter()
-        DispatchQueue.global(qos: .utility).async {
+        let done = DispatchSemaphore(value: 0)
+        let reader = Thread {
             errData = err.fileHandleForReading.readDataToEndOfFile()
-            group.leave()
+            done.signal()
         }
+        reader.start()
         let data = out.fileHandleForReading.readDataToEndOfFile()
-        group.wait()
+        done.wait()
         process.waitUntilExit()
         guard allowedExitCodes.contains(process.terminationStatus) else {
             let msg = String(decoding: errData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)

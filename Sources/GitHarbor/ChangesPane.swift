@@ -5,6 +5,8 @@ import SwiftUI
 struct ChangesPane: View {
     @Bindable var session: ChangesSession
     @State private var confirmDiscard: [FileChange]?
+    /// Görsel test: `--file yol` o dosyanın (commit'e eklenmemiş) farkını açar.
+    @State private var testFile = value(of: "--file")
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,6 +55,13 @@ struct ChangesPane: View {
         } message: {
             Text("\(confirmDiscard?.count ?? 0) dosyadaki kaydedilmemiş değişiklikler kaybolur. Yeni dosyalar Çöp Sepeti'ne taşınır.")
         }
+        .task(id: session.unstaged.count) { pickTestFile() }
+    }
+
+    private func pickTestFile() {
+        guard let f = testFile, let change = session.unstaged.first(where: { $0.path == f }) else { return }
+        testFile = nil
+        session.select(change)
     }
 
     private func sectionHeader(_ title: String, count: Int, action: String, perform: @escaping () -> Void) -> some View {

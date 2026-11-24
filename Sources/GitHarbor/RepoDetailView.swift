@@ -170,6 +170,7 @@ private struct StashButton: View {
                 }
             }
             .padding(.horizontal, 11).padding(.vertical, 12)
+            .fixedSize()
             .glassEffect(.regular, in: .rect(cornerRadius: 10))
         }
         .help("Saklanan değişiklikler (stash)")

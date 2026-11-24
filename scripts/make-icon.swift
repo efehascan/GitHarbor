@@ -1,5 +1,5 @@
 // Uygulama ikonunu çizer: macOS ızgarasında yuvarlatılmış kare, renk geçişi, beyaz SF Symbol.
-// Kullanım: swift scripts/make-icon.swift <githarbor|pulsebar|islet> <çıktı.png>
+// Kullanım: swift scripts/make-icon.swift <githarbor|pulsebar|islet|liman|geride|kirli|catisma|yeni-dal> <çıktı.png>
 import AppKit
 
 let args = CommandLine.arguments
@@ -16,6 +16,12 @@ let designs: [String: Design] = [
     "githarbor": Design(top: 0x3D8BFF, bottom: 0x0B2A6B, symbol: "sailboat.fill", scale: 0.56),
     "pulsebar": Design(top: 0x2EE6A6, bottom: 0x0A5C5A, symbol: "waveform.path.ecg", scale: 0.60),
     "islet": Design(top: 0x8E6BFF, bottom: 0x2A1460, symbol: "", scale: 0),
+    // Deneme depoları (scripts/make-fixtures.sh): ekran görüntülerinde logolar görünsün.
+    "liman": Design(top: 0x38BDF8, bottom: 0x0E4A6E, symbol: "ferry.fill", scale: 0.58),
+    "geride": Design(top: 0xFDBA74, bottom: 0xC2410C, symbol: "clock.arrow.circlepath", scale: 0.56),
+    "kirli": Design(top: 0xF9A8D4, bottom: 0x9D174D, symbol: "paintbrush.pointed.fill", scale: 0.54),
+    "catisma": Design(top: 0xFCA5A5, bottom: 0x991B1B, symbol: "arrow.triangle.merge", scale: 0.54),
+    "yeni-dal": Design(top: 0xC4B5FD, bottom: 0x5B21B6, symbol: "arrow.triangle.branch", scale: 0.54),
 ]
 guard let d = designs[name] else { print("bilinmeyen ad: \(name)"); exit(1) }
 

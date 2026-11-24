@@ -31,6 +31,10 @@ A fast, native git client for macOS. Everything you'd expect from a desktop git 
   <img src="docs/images/history-light.png" width="410" alt="History">
   <img src="docs/images/conflict-dark.png" width="410" alt="Conflict resolution">
 </p>
+<p align="center">
+  <img src="docs/images/worktrees-dark.png" width="410" alt="Worktrees">
+  <img src="docs/images/palette-dark.png" width="410" alt="Command palette">
+</p>
 
 ## Requirements
 

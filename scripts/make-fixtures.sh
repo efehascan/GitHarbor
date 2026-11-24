@@ -7,12 +7,20 @@ rm -rf "$B"; mkdir -p "$B/remotes" "$B/repos"
 export GIT_AUTHOR_NAME="Efe Hascan" GIT_AUTHOR_EMAIL="efe@example.com" GIT_COMMITTER_NAME="Efe Hascan" GIT_COMMITTER_EMAIL="efe@example.com"
 g() { git -c commit.gpgsign=false -c tag.gpgsign=false -c init.defaultBranch=main "$@"; }
 
+# Depo logoları bir kez çizilir ve saklanır (.build/fixture-icons); her depo kendi assets/icon.png'siyle commit'lenir.
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"; ICONS="$ROOT/.build/fixture-icons"; mkdir -p "$ICONS"
+for n in liman geride kirli catisma yeni-dal; do
+  [ -s "$ICONS/$n.png" ] || swift "$ROOT/scripts/make-icon.swift" "$n" "$ICONS/$n.png" >/dev/null
+  sips -Z 256 "$ICONS/$n.png" >/dev/null
+done
+
 mk() { # ad → bare uzak + klon + 3 commit
   g init -q --bare "$B/remotes/$1.git"
   g clone -q "$B/remotes/$1.git" "$B/repos/$1" 2>/dev/null
   cd "$B/repos/$1"
   printf 'import Foundation\n\nlet a = 1\nlet b = 2\nlet c = 3\n' > app.swift
   printf '# %s\n\nDeneme deposu.\n' "$1" > README.md
+  mkdir -p assets; cp "$ICONS/$(echo "$1" | tr '[:upper:]' '[:lower:]').png" assets/icon.png
   g add -A && g commit -q -m "İlk commit"
   printf 'let x = 10\n' > util.swift && g add -A && g commit -q -m "Yardımcı dosya eklendi (#12)"
   printf 'import Foundation\n\nlet a = 1\nlet b = 20\nlet c = 3\nlet d = 4\n' > app.swift && g add -A && g commit -q -m "feat: d değişkeni"
@@ -35,6 +43,7 @@ printf 'import Foundation\n\nlet a = 1\nlet b = 25\nlet c = 3\nlet d = 4\nlet e 
 printf 'let x = 11\n' > util.swift; g add util.swift
 printf 'yeni dosya\n' > yeni.txt
 g mv README.md BENIOKU.md
+g worktree add -q "$B/repos/Liman-arama" ozellik/arama   # çalışma ağacı paneli için
 
 # 2) Geride: temiz ve 2 commit geride → otomatik ileri sarılmalı
 mk Geride; other Geride 2; cd "$B/repos/Geride"; g fetch -q

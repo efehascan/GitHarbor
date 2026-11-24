@@ -31,6 +31,10 @@ macOS için hızlı ve yerel bir git istemcisi. Masaüstü git uygulamasından b
   <img src="docs/images/history-light.png" width="410" alt="Geçmiş">
   <img src="docs/images/conflict-dark.png" width="410" alt="Çakışma çözümü">
 </p>
+<p align="center">
+  <img src="docs/images/worktrees-dark.png" width="410" alt="Çalışma ağaçları">
+  <img src="docs/images/palette-dark.png" width="410" alt="Komut paleti">
+</p>
 
 ## Gereksinimler
 
